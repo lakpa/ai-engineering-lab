@@ -88,7 +88,7 @@
     "href": "embeddings-and-search/01-text-embeddings.html#where-im-going-next",
     "title": "Text Embeddings and Semantic Search",
     "section": "Where I’m going next",
-    "text": "Where I’m going next\nA possible next experiment is to test how retrieval quality and latency change as the song collection grows. That would require a larger dataset, representative queries, and relevance judgments."
+    "text": "Where I’m going next\nNext, I’ll use a listener’s song history to build a simple content-based recommender. I’ll combine the embeddings of songs they liked into a preference vector, search the Chroma collection for similar songs they have not heard, and inspect where recommendations based only on titles and descriptions fall short. With 24 fictional songs, this will be a small demonstration rather than a performance benchmark."
   },
   {
     "objectID": "index.html",
