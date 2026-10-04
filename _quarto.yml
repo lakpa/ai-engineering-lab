@@ -1,0 +1,27 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - index.qmd
+    - embeddings-and-search/01-text-embeddings.ipynb
+  resources:
+    - embeddings-and-search/songs.csv
+
+website:
+  title: "AI Engineering Lab"
+  site-url: https://lakpa.github.io/ai-engineering-lab/
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: embeddings-and-search/01-text-embeddings.ipynb
+        text: Text Embeddings
+    right:
+      - icon: github
+        href: https://github.com/lakpa/ai-engineering-lab
+        aria-label: GitHub repository
+
+format:
+  html:
+    theme: cosmo
+    toc: true

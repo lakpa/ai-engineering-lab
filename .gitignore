@@ -79,6 +79,10 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# Quarto website output
+_site/
+.quarto/
+
 # IPython
 profile_default/
 ipython_config.py
@@ -218,3 +222,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+**/*.quarto_ipynb

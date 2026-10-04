@@ -1,0 +1,12 @@
+---
+title: "AI Engineering Lab"
+description: "Learning AI engineering through small experiments and measured comparisons."
+---
+
+I use small, reproducible experiments to understand embeddings, search, and retrieval systems. Each notebook records the question, implementation, result, and next engineering decision.
+
+## Embeddings and search
+
+- [Text Embeddings and Semantic Search](embeddings-and-search/01-text-embeddings.ipynb) builds a song search engine and compares a keyword baseline with embedding retrieval.
+
+The [source notebooks and song dataset](https://github.com/lakpa/ai-engineering-lab/tree/main/embeddings-and-search) are available in the repository.
