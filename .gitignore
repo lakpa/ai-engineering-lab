@@ -81,7 +81,7 @@ target/
 
 # Quarto website output
 _site/
-.quarto/
+/.quarto/
 
 # IPython
 profile_default/
