@@ -1,0 +1,114 @@
+[
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html",
+    "href": "embeddings-and-search/01-text-embeddings.html",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "",
+    "text": "Imagine someone searches our song catalog for “A gentle track about losing a loved one and remembering them.” One description says, “A quiet song about grieving someone who has died and holding on to their memory.” The wording differs, but the theme is close. How can a search engine find it?\nA basic keyword search checks whether query words appear in a song’s text. It is easy to understand and useful when words match. Semantic search instead compares representations of the query and songs, so it can retrieve related wording. I will build a small song search engine to test this difference, starting with what an embedding represents."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#the-problem-searching-by-meaning",
+    "href": "embeddings-and-search/01-text-embeddings.html#the-problem-searching-by-meaning",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "",
+    "text": "Imagine someone searches our song catalog for “A gentle track about losing a loved one and remembering them.” One description says, “A quiet song about grieving someone who has died and holding on to their memory.” The wording differs, but the theme is close. How can a search engine find it?\nA basic keyword search checks whether query words appear in a song’s text. It is easy to understand and useful when words match. Semantic search instead compares representations of the query and songs, so it can retrieve related wording. I will build a small song search engine to test this difference, starting with what an embedding represents."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#from-text-to-vectors",
+    "href": "embeddings-and-search/01-text-embeddings.html#from-text-to-vectors",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "From text to vectors",
+    "text": "From text to vectors\nAn embedding is a vector of numbers produced by a model. For text retrieval, we encode a sentence or document as one vector and compare it with a query vector. The model has been trained so that related texts can have related representations. Similarity is useful evidence, not a guarantee that two texts mean the same thing.\nThere are two related uses of the word embedding:\n\n\n\n\n\n\n\n\nUse\nWhat is represented\nWhat happens next\n\n\n\n\nToken embeddings inside a language model\nA token ID is mapped to a learned vector\nThe model processes it with context from other tokens.\n\n\nText embeddings for retrieval\nA sentence, paragraph, or document is encoded as one vector\nA search system compares it with query vectors.\n\n\n\nThis notebook uses the second kind. Both stored song text and search queries must pass through the same text embedding model."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#our-first-text-embedding",
+    "href": "embeddings-and-search/01-text-embeddings.html#our-first-text-embedding",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "Our first text embedding",
+    "text": "Our first text embedding\nI use the all-MiniLM-L6-v2 sentence embedding model to encode three descriptions. It produces 384 numbers for each one. The next cell compares the first description with itself and the other two using cosine similarity.\n\nfrom sentence_transformers import SentenceTransformer\n\nmodel = SentenceTransformer(\"all-MiniLM-L6-v2\")\nsentences = [\n    \"A song about finding hope after heartbreak.\",\n    \"An uplifting track about starting over after a breakup.\",\n    \"An energetic dance song for a summer party.\",\n]\nembeddings = model.encode(sentences)\nsimilarities = model.similarity(embeddings[:1], embeddings)[0]\n\nprint(f\"Dimensions: {embeddings.shape[1]}\")\nfor sentence, score in zip(sentences, similarities):\n    print(f\"{score:.4f}  {sentence}\")\n\nDimensions: 384\n1.0000  A song about finding hope after heartbreak.\n0.6546  An uplifting track about starting over after a breakup.\n0.3642  An energetic dance song for a summer party."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#experiment-do-similar-meanings-produce-similar-vectors",
+    "href": "embeddings-and-search/01-text-embeddings.html#experiment-do-similar-meanings-produce-similar-vectors",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "Experiment: do similar meanings produce similar vectors?",
+    "text": "Experiment: do similar meanings produce similar vectors?\nThe model assigns the breakup descriptions a higher cosine similarity than the summer party description:\n\n\n\nComparison with “finding hope after heartbreak”\nCosine similarity\n\n\n\n\nThe same description\n1.0000\n\n\nStarting over after a breakup\n0.6546\n\n\nA summer party\n0.3642\n\n\n\nThe first score is 1 because a vector is compared with itself. The second pair uses different words but shares a theme. This is one small example, not proof that the model will understand every paraphrase or that a particular score always means “relevant.”"
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#before-384-dimensions-lets-understand-three",
+    "href": "embeddings-and-search/01-text-embeddings.html#before-384-dimensions-lets-understand-three",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "Before 384 dimensions, let’s understand three",
+    "text": "Before 384 dimensions, let’s understand three\nThe fruit example makes vector space easier to see. These coordinates are chosen by hand, not learned by an embedding model. Each vector has three coordinates in the order (sweetness, size, citrus intensity):\n\n\n\nFruit\nVector\nDescription\n\n\n\n\nBanana\n(8, 7, 0)\nVery sweet, moderately large, non-citrus\n\n\nApple\n(5, 6, 1)\nModerately sweet, medium-sized, slightly citrusy\n\n\nLemon\n(2, 4, 8)\nNot very sweet, smaller, strongly citrusy\n\n\n\n\n\n\nThree-dimensional plot of banana, apple, lemon, and a query vector, with sweetness on the x-axis, size on the y-axis, and citrus intensity on the z-axis.\n\n\nThe plot places apple and banana relatively close together because both have higher sweetness and size values and low citrus intensity. Lemon lies farther toward the citrus axis. This shows how the chosen features position fruits in a vector space. Cosine similarity compares directions from the origin, rather than straight-line distances on the plot.\nHere, the fruit vectors and query use the same three features. Real text embeddings use learned coordinates instead of hand-labeled features."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#cosine-similarity-from-scratch",
+    "href": "embeddings-and-search/01-text-embeddings.html#cosine-similarity-from-scratch",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "Cosine similarity from scratch",
+    "text": "Cosine similarity from scratch\nFor two nonzero vectors \\(A\\) and \\(B\\), the formula is:\n\\[\n\\cos(\\theta) = \\frac{A \\cdot B}{\\lVert A \\rVert\\,\\lVert B \\rVert}\n\\]\nThe dot product multiplies matching coordinates and adds the results. The magnitudes in the denominator normalize vector length, so the score reflects direction. For the query \\(Q=(6,6,2)\\) and apple \\(A=(5,6,1)\\):\n\nDot product: \\(Q\\cdot A=6(5)+6(6)+2(1)=30+36+2=68\\).\nMagnitudes: \\(\\lVert Q \\rVert=\\sqrt{36+36+4}=\\sqrt{76}\\) and \\(\\lVert A \\rVert=\\sqrt{25+36+1}=\\sqrt{62}\\).\nSimilarity: \\(68/(\\sqrt{76}\\sqrt{62})\\approx0.9906\\), displayed as 0.991 to three decimal places.\n\nThe next cell uses (6, 6, 2) as a query for a moderately sweet, medium-sized fruit with a little citrus and ranks the stored fruit vectors by cosine similarity.\n\nfrom math import sqrt\n\nfruits = {\n    'Banana': (8, 7, 0),\n    'Apple': (5, 6, 1),\n    'Lemon': (2, 4, 8),\n}\nquery = (6, 6, 2)\n\ndef cosine_similarity(a, b):\n    dot_product = sum(x * y for x, y in zip(a, b))\n    magnitude_a = sqrt(sum(x * x for x in a))\n    magnitude_b = sqrt(sum(y * y for y in b))\n    return dot_product / (magnitude_a * magnitude_b)\n\nranked = sorted(\n    ((fruit, cosine_similarity(query, vector)) for fruit, vector in fruits.items()),\n    key=lambda result: result[1],\n    reverse=True,\n)\n\nfor fruit, score in ranked:\n    print(f'{fruit}: {score:.3f}')\n\nApple: 0.991\nBanana: 0.971\nLemon: 0.651\n\n\nThe query scores about 0.991 with apple, 0.971 with banana, and 0.651 with lemon, so apple ranks first. These scores compare vector directions, not absolute differences in individual fruit features.\nThese coordinates were chosen by hand to describe fruit. They cannot meaningfully describe Apple Inc., because sweetness, size, and citrus intensity are fruit attributes. Real text embeddings are learned from data and have many more dimensions; individual coordinates usually do not have simple, human-readable meanings."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#from-three-dimensions-to-384",
+    "href": "embeddings-and-search/01-text-embeddings.html#from-three-dimensions-to-384",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "From three dimensions to 384",
+    "text": "From three dimensions to 384\nThe fruit coordinates have labels we chose: sweetness, size, and citrus intensity. The MiniLM vectors have 384 learned coordinates. We should not label an individual coordinate “sadness” or “genre”: useful information is distributed across the vector, and individual numbers are generally hard to interpret on their own.\nThe comparison principle is the same in both examples: put the query and candidate items in the same space, then compare their vectors. The fruit code uses cosine similarity explicitly. The Chroma collection below uses its configured distance measure, which we have not set to cosine."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#a-short-detour-word2vec",
+    "href": "embeddings-and-search/01-text-embeddings.html#a-short-detour-word2vec",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "A short detour: Word2Vec",
+    "text": "A short detour: Word2Vec\nWord2Vec is an earlier family of methods for learning word embeddings from context. In continuous bag-of-words (CBOW), surrounding words help predict a target word. In skip-gram, the target word helps predict surrounding words. The idea that context reveals relationships remains useful, but those word-level methods are different from the sentence embedding model used in this experiment."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#building-a-semantic-song-search-engine",
+    "href": "embeddings-and-search/01-text-embeddings.html#building-a-semantic-song-search-engine",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "Building a semantic song search engine",
+    "text": "Building a semantic song search engine\nThe song dataset has 24 fictional songs. I combine each title and description into one text document. Chroma calls the same MiniLM model to embed those documents and keeps their IDs and other fields as metadata.\nsongs.csv → title + description → MiniLM embedding → Chroma collection\nsearch text → MiniLM embedding → nearby song vectors → song metadata\nThe embedding model produces the representation; Chroma stores and searches it. The database’s distance calculation works on vectors and does not independently infer a song’s meaning. This example uses an in-memory Chroma client, so running the next cell rebuilds the collection for the current session. upsert lets the cell run again without duplicating IDs.\n\nimport chromadb\nfrom chromadb.utils import embedding_functions\nimport pandas as pd\n\nsongs_df = pd.read_csv(\"songs.csv\")\nrows = songs_df.to_dict(\"records\")\n\nclient = chromadb.Client()\nembedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(\n    model_name=\"all-MiniLM-L6-v2\"\n)\ncollection = client.get_or_create_collection(\n    \"song_search\", embedding_function=embedding_function\n)\ncollection.upsert(\n    ids=[row[\"id\"] for row in rows],\n    documents=[f'{row[\"title\"]} {row[\"description\"]}' for row in rows],\n    metadatas=[\n        {\n            \"songId\": row[\"id\"],\n            \"title\": row[\"title\"],\n            \"genre\": row[\"genre\"],\n            \"description\": row[\"description\"],\n        }\n        for row in rows\n    ],\n)\nprint(f\"Indexed {collection.count()} songs\")\n\nIndexed 24 songs\n\n\n\nSearching songs by meaning\nNow I query with wording that does not repeat the target song’s description. Chroma embeds the query with MiniLM and requests the three nearest songs. Results are grouped by input query, so results[\"metadatas\"][0] selects the matches for this one query.\n\nquery = \"A gentle track about losing a loved one and remembering them.\"\nresults = collection.query(query_texts=[query], n_results=3)\n\nfor rank, metadata in enumerate(results[\"metadatas\"][0], start=1):\n    print(f'{rank}. {metadata[\"title\"]} ({metadata[\"genre\"]}) — {metadata[\"songId\"]}')\n    print(f'   {metadata[\"description\"]}')\n\n1. Missing Your Voice (Piano ballad) — song_023\n   A quiet song about grieving someone who has died and holding on to their memory.\n2. Last Letter (Folk) — song_008\n   A bittersweet song about saying goodbye to a former partner and learning to let go.\n3. First Light (Pop) — song_001\n   A song about finding hope after heartbreak.\n\n\nThe saved result ranks these songs for the paraphrased query:\n\n\n\n\n\n\n\n\n\nRank\nSong\nGenre\nDescription\n\n\n\n\n1\nMissing Your Voice\nPiano ballad\nA quiet song about grieving someone who has died and holding on to their memory.\n\n\n2\nLast Letter\nFolk\nA bittersweet song about saying goodbye to a former partner and learning to let go.\n\n\n3\nFirst Light\nPop\nA song about finding hope after heartbreak.\n\n\n\nThe first song’s description talks about grieving someone and keeping their memory, while the query uses “losing a loved one” and “remembering.” A nearest match is a retrieval result, not an objective judgment of relevance. The model and dataset determine the ranking."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#experiment-keyword-search-versus-semantic-search",
+    "href": "embeddings-and-search/01-text-embeddings.html#experiment-keyword-search-versus-semantic-search",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "Experiment: keyword search versus semantic search",
+    "text": "Experiment: keyword search versus semantic search\nTo make the comparison concrete, I use the same query and the same title plus description text for two approaches. The keyword baseline counts distinct query words appearing in each document after lowercasing and removing a small, explicitly listed set of common words. It is intentionally simple: it does not stem words, expand synonyms, or use a mature text search engine. The semantic ranking comes from the Chroma query above.\nI report the top three matches from each approach and check how many selected query words appear in the target song.\n\nimport re\n\nstop_words = {\n    \"a\", \"an\", \"the\", \"about\", \"and\", \"them\", \"one\", \"of\", \"to\",\n    \"for\", \"with\", \"in\", \"on\", \"their\", \"someone\",\n}\n\ndef content_words(text):\n    return set(re.findall(r\"[a-z]+\", text.lower())) - stop_words\n\nquery_words = content_words(query)\nkeyword_matches = []\nfor row in rows:\n    song_text = f'{row[\"title\"]} {row[\"description\"]}'\n    shared_words = query_words & content_words(song_text)\n    if shared_words:\n        keyword_matches.append((len(shared_words), row[\"id\"], row[\"title\"]))\n\nkeyword_matches.sort(key=lambda item: (-item[0], item[1]))\nprint(f\"Query words checked: {', '.join(sorted(query_words))}\")\nprint(\"Keyword top 3 (ties by song ID):\")\nfor count, song_id, title in keyword_matches[:3]:\n    print(f\"  {song_id}: {title} ({count} matching word)\")\n\nprint(\"Semantic top 3:\")\nfor metadata in results[\"metadatas\"][0]:\n    print(f'  {metadata[\"songId\"]}: {metadata[\"title\"]}')\n\ntarget = next(row for row in rows if row[\"id\"] == \"song_023\")\ntarget_text = f'{target[\"title\"]} {target[\"description\"]}'\nprint(f\"Target keyword overlap: {len(query_words & content_words(target_text))}\")\n\nQuery words checked: gentle, losing, loved, remembering, track\nKeyword top 3 (ties by song ID):\n  song_002: Begin Again (1 matching word)\n  song_005: Evening Drizzle (1 matching word)\n  song_009: City After Dark (1 matching word)\nSemantic top 3:\n  song_023: Missing Your Voice\n  song_008: Last Letter\n  song_001: First Light\nTarget keyword overlap: 0\n\n\nThe target has zero overlap with the selected query words, so this baseline does not return it. Chroma places it first. This demonstrates the value of embeddings for this paraphrase. It does not establish that semantic search always wins: lexical search can be better for exact titles, IDs, unusual names, or when an embedding model misses the intent. A larger evaluation would need labeled queries and relevance judgments."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#scaling-vector-search",
+    "href": "embeddings-and-search/01-text-embeddings.html#scaling-vector-search",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "Scaling vector search",
+    "text": "Scaling vector search\nWith 24 songs, comparing the query against every vector is practical. Exact k-nearest-neighbor (k-NN) search computes distances for the stored candidates and returns the true nearest k under the chosen measure. Approximate nearest-neighbor (ANN) indexes can reduce search work in larger collections, sometimes at the cost of missing a true neighbor.\nHNSW is one ANN method. It builds a graph of vector relationships and explores promising paths during retrieval. That introduces an engineering trade-off between latency, memory, and recall. Here, recall means the fraction of exact nearest neighbors found by the approximate search; it does not measure whether a song actually fits a listener’s request. We need a larger dataset and representative queries to measure that trade-off. No speed or recall benchmark is claimed for this 24-song example."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#what-i-learned",
+    "href": "embeddings-and-search/01-text-embeddings.html#what-i-learned",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "What I learned",
+    "text": "What I learned\nThe fruit vectors made cosine similarity understandable, but their named coordinates are only an illustration. MiniLM’s 384 coordinates are learned and do not have simple labels. The song experiment showed me a more useful distinction: a small keyword baseline missed the grief song because the selected words were absent, while the embedding search ranked it first. It also showed why I must keep the model and the search system separate in my reasoning: MiniLM creates the vectors; Chroma retrieves nearby vectors. The next question is how retrieval quality and latency change when the collection grows."
+  },
+  {
+    "objectID": "embeddings-and-search/01-text-embeddings.html#where-im-going-next",
+    "href": "embeddings-and-search/01-text-embeddings.html#where-im-going-next",
+    "title": "Text Embeddings and Semantic Search",
+    "section": "Where I’m going next",
+    "text": "Where I’m going next\nA possible next experiment is to test how retrieval quality and latency change as the song collection grows. That would require a larger dataset, representative queries, and relevance judgments."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "AI Engineering Lab",
+    "section": "",
+    "text": "I use small, reproducible experiments to understand embeddings, search, and retrieval systems. Each notebook records the question, implementation, result, and next engineering decision."
+  },
+  {
+    "objectID": "index.html#embeddings-and-search",
+    "href": "index.html#embeddings-and-search",
+    "title": "AI Engineering Lab",
+    "section": "Embeddings and search",
+    "text": "Embeddings and search\n\nText Embeddings and Semantic Search builds a song search engine and compares a keyword baseline with embedding retrieval.\n\nThe source notebooks and song dataset are available in the repository."
+  }
+]
