@@ -56,13 +56,6 @@
     "text": "From three dimensions to 384\nThe fruit coordinates have labels we chose: sweetness, size, and citrus intensity. The MiniLM vectors have 384 learned coordinates. We should not label an individual coordinate “sadness” or “genre”: useful information is distributed across the vector, and individual numbers are generally hard to interpret on their own.\nThe comparison principle is the same in both examples: put the query and candidate items in the same space, then compare their vectors. The fruit code uses cosine similarity explicitly. The Chroma collection below uses its configured distance measure, which we have not set to cosine."
   },
   {
-    "objectID": "embeddings-and-search/01-text-embeddings.html#a-short-detour-word2vec",
-    "href": "embeddings-and-search/01-text-embeddings.html#a-short-detour-word2vec",
-    "title": "Text Embeddings and Semantic Search",
-    "section": "A short detour: Word2Vec",
-    "text": "A short detour: Word2Vec\nWord2Vec is an earlier family of methods for learning word embeddings from context. In continuous bag-of-words (CBOW), surrounding words help predict a target word. In skip-gram, the target word helps predict surrounding words. The idea that context reveals relationships remains useful, but those word-level methods are different from the sentence embedding model used in this experiment."
-  },
-  {
     "objectID": "embeddings-and-search/01-text-embeddings.html#building-a-semantic-song-search-engine",
     "href": "embeddings-and-search/01-text-embeddings.html#building-a-semantic-song-search-engine",
     "title": "Text Embeddings and Semantic Search",

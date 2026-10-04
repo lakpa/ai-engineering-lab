@@ -82,7 +82,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-445b8638c3d06994fee0907d791121c4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-55617497126496852ff9f5a59253c640.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -198,7 +198,6 @@ window.Quarto = {
   <li><a href="#before-384-dimensions-lets-understand-three" id="toc-before-384-dimensions-lets-understand-three" class="nav-link" data-scroll-target="#before-384-dimensions-lets-understand-three">Before 384 dimensions, let’s understand three</a></li>
   <li><a href="#cosine-similarity-from-scratch" id="toc-cosine-similarity-from-scratch" class="nav-link" data-scroll-target="#cosine-similarity-from-scratch">Cosine similarity from scratch</a></li>
   <li><a href="#from-three-dimensions-to-384" id="toc-from-three-dimensions-to-384" class="nav-link" data-scroll-target="#from-three-dimensions-to-384">From three dimensions to 384</a></li>
-  <li><a href="#a-short-detour-word2vec" id="toc-a-short-detour-word2vec" class="nav-link" data-scroll-target="#a-short-detour-word2vec">A short detour: Word2Vec</a></li>
   <li><a href="#building-a-semantic-song-search-engine" id="toc-building-a-semantic-song-search-engine" class="nav-link" data-scroll-target="#building-a-semantic-song-search-engine">Building a semantic song search engine</a>
   <ul class="collapse">
   <li><a href="#searching-songs-by-meaning" id="toc-searching-songs-by-meaning" class="nav-link" data-scroll-target="#searching-songs-by-meaning">Searching songs by meaning</a></li>
@@ -428,10 +427,6 @@ Lemon: 0.651</code></pre>
 <h2 class="anchored" data-anchor-id="from-three-dimensions-to-384">From three dimensions to 384</h2>
 <p>The fruit coordinates have labels we chose: sweetness, size, and citrus intensity. The MiniLM vectors have 384 learned coordinates. We should not label an individual coordinate “sadness” or “genre”: useful information is distributed across the vector, and individual numbers are generally hard to interpret on their own.</p>
 <p>The comparison principle is the same in both examples: put the query and candidate items in the same space, then compare their vectors. The fruit code uses cosine similarity explicitly. The Chroma collection below uses its configured distance measure, which we have not set to cosine.</p>
-</section>
-<section id="a-short-detour-word2vec" class="level2">
-<h2 class="anchored" data-anchor-id="a-short-detour-word2vec">A short detour: Word2Vec</h2>
-<p>Word2Vec is an earlier family of methods for learning <strong>word</strong> embeddings from context. In continuous bag-of-words (CBOW), surrounding words help predict a target word. In skip-gram, the target word helps predict surrounding words. The idea that context reveals relationships remains useful, but those word-level methods are different from the sentence embedding model used in this experiment.</p>
 </section>
 <section id="building-a-semantic-song-search-engine" class="level2">
 <h2 class="anchored" data-anchor-id="building-a-semantic-song-search-engine">Building a semantic song search engine</h2>
