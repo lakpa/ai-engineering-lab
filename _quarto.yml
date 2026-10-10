@@ -4,6 +4,7 @@ project:
   render:
     - index.qmd
     - embeddings-and-search/01-text-embeddings.ipynb
+    - embeddings-and-search/02-content-based-recommender.ipynb
   resources:
     - embeddings-and-search/songs.csv
 
@@ -16,6 +17,8 @@ website:
         text: Home
       - href: embeddings-and-search/01-text-embeddings.ipynb
         text: Text Embeddings
+      - href: embeddings-and-search/02-content-based-recommender.ipynb
+        text: Song Recommender
     right:
       - icon: github
         href: https://github.com/lakpa/ai-engineering-lab

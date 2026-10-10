@@ -5,12 +5,13 @@ Hands-on notebooks documenting my AI engineering experiments with embeddings, ve
 ## Read the notebooks
 
 - [Text Embeddings and Semantic Search](embeddings-and-search/01-text-embeddings.ipynb) explains vectors and cosine similarity, builds a song search engine, and compares keyword and semantic retrieval.
+- [A Content-Based Song Recommender](embeddings-and-search/02-content-based-recommender.ipynb) averages embeddings of three liked songs, recommends unheard songs, and inspects where text similarity falls short.
 
-The notebook uses the fictional [song dataset](embeddings-and-search/songs.csv), Chroma in memory, and the `all-MiniLM-L6-v2` model.
+The notebooks use the fictional [song dataset](embeddings-and-search/songs.csv), Chroma in memory, and the `all-MiniLM-L6-v2` model.
 
 ## Run locally
 
-Create a Python environment, install the packages in `requirements.txt`, and select that environment as the Jupyter kernel. Run the notebook cells from top to bottom. The first notebook reads `songs.csv` relative to the `embeddings-and-search` directory.
+Create a Python environment, install the packages in `requirements.txt`, and select that environment as the Jupyter kernel. Run each notebook's cells from top to bottom. Both notebooks read `songs.csv` relative to the `embeddings-and-search` directory.
 
 To render the Quarto site, install [Quarto](https://quarto.org/docs/get-started/) and run `quarto render` from the repository root. Quarto uses the notebooks' saved outputs by default; rerun cells in Jupyter after changing code or data so the article reflects the current results.
 
