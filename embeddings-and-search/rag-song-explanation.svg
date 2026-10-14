@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850" role="img" aria-labelledby="title desc">
+  <title id="title">RAG pipeline for explaining a song recommendation</title>
+  <desc id="desc">A listener asks why Last Letter was recommended. The RAG pipeline retrieves the listener's three liked songs and the recommended song from the catalog, sends their descriptions and source IDs to a language model, and returns an explanation grounded in those records.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M1 1 L9 5 L1 9 Z" fill="#475569"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: #17233b; }
+    .heading { font-size: 29px; font-weight: 700; }
+    .label { font-size: 18px; font-weight: 700; letter-spacing: 1.3px; fill: #315f7e; }
+    .body { font-size: 23px; }
+    .small { font-size: 18px; }
+    .arrow-label { font-size: 17px; font-weight: 700; fill: #475569; }
+    .panel { fill: #ffffff; stroke: #334155; stroke-width: 2.5; rx: 17; }
+    .pipeline { fill: #eaf5fa; stroke: #2c698a; stroke-width: 3; rx: 20; }
+    .flow { fill: none; stroke: #475569; stroke-width: 3; marker-end: url(#arrow); }
+  </style>
+  <rect width="1200" height="850" fill="#f8fafc"/>
+  <text x="600" y="45" text-anchor="middle" class="heading">Example: explaining a song recommendation with RAG</text>
+
+  <rect x="70" y="80" width="480" height="140" class="panel"/>
+  <text x="100" y="115" class="label">LISTENER QUESTION</text>
+  <text x="100" y="157" class="body">“Why was Last Letter</text>
+  <text x="100" y="191" class="body">recommended to me?”</text>
+
+  <rect x="650" y="80" width="480" height="140" class="panel"/>
+  <text x="680" y="115" class="label">EXAMPLE EXPLANATION</text>
+  <text x="680" y="151" class="small">“It shares the breakup theme of your liked</text>
+  <text x="680" y="178" class="small">songs, but its bittersweet mood differs</text>
+  <text x="680" y="205" class="small">from their hopeful descriptions.”</text>
+
+  <path d="M480 220 V272" class="flow"/>
+  <text x="400" y="252" class="arrow-label">question</text>
+  <path d="M720 275 V226" class="flow"/>
+  <text x="735" y="253" class="arrow-label">answer</text>
+
+  <rect x="230" y="280" width="740" height="200" class="pipeline"/>
+  <text x="600" y="321" text-anchor="middle" class="heading">Recommendation app / RAG pipeline</text>
+  <text x="280" y="363" class="body">1. Retrieve the liked songs and recommended song.</text>
+  <text x="280" y="403" class="body">2. Add their descriptions and IDs to the prompt.</text>
+  <text x="280" y="443" class="body">3. Request an explanation tied to that evidence.</text>
+
+  <path d="M355 480 V580" class="flow"/>
+  <text x="285" y="540" class="arrow-label">retrieve</text>
+  <path d="M485 580 V486" class="flow"/>
+  <text x="499" y="540" class="arrow-label">records</text>
+  <path d="M765 480 V580" class="flow"/>
+  <text x="607" y="540" class="arrow-label">prompt + records</text>
+  <path d="M895 580 V486" class="flow"/>
+  <text x="909" y="540" class="arrow-label">draft answer</text>
+
+  <rect x="70" y="590" width="510" height="230" class="panel"/>
+  <text x="100" y="626" class="label">SONG CATALOG</text>
+  <text x="100" y="661" class="small">Liked: First Light — hope after heartbreak</text>
+  <text x="100" y="695" class="small">Liked: Begin Again — starting over</text>
+  <text x="100" y="729" class="small">Liked: Morning Resolve — hopeful fresh start</text>
+  <text x="100" y="763" class="small">Candidate: Last Letter — bittersweet goodbye</text>
+  <text x="100" y="797" class="small">Each record has a source ID and description.</text>
+
+  <rect x="650" y="590" width="480" height="230" class="panel"/>
+  <text x="680" y="626" class="label">LANGUAGE MODEL</text>
+  <text x="680" y="665" class="small">Receives the question, four song records,</text>
+  <text x="680" y="696" class="small">their source IDs, and an instruction to</text>
+  <text x="680" y="727" class="small">use only the supplied evidence.</text>
+  <text x="680" y="784" class="small">Returns a draft explanation.</text>
+</svg>

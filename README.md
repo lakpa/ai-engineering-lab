@@ -11,7 +11,15 @@ The notebooks use the fictional [song dataset](embeddings-and-search/songs.csv),
 
 ## Run locally
 
-Create a Python environment, install the packages in `requirements.txt`, and select that environment as the Jupyter kernel. Run each notebook's cells from top to bottom. Both notebooks read `songs.csv` relative to the `embeddings-and-search` directory.
+Create a project environment and install the notebook dependencies:
+
+```sh
+python3.10 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip check
+```
+
+Select `.venv/bin/python` as the Jupyter kernel. Run each notebook's cells from top to bottom. Notebooks that load `songs.csv` expect the working directory to be `embeddings-and-search`.
 
 To render the Quarto site, install [Quarto](https://quarto.org/docs/get-started/) and run `quarto render` from the repository root. Quarto uses the notebooks' saved outputs by default; rerun cells in Jupyter after changing code or data so the article reflects the current results.
 
