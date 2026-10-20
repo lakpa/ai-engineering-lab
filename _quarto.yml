@@ -5,8 +5,11 @@ project:
     - index.qmd
     - embeddings-and-search/01-text-embeddings.ipynb
     - embeddings-and-search/02-content-based-recommender.ipynb
+    - embeddings-and-search/03-grounded-recommendation-explanations.ipynb
   resources:
     - embeddings-and-search/songs.csv
+    - embeddings-and-search/public-domain-songs.csv
+    - embeddings-and-search/public-domain-song-lyrics.csv
 
 website:
   title: "AI Engineering Lab"
@@ -19,6 +22,8 @@ website:
         text: Text Embeddings
       - href: embeddings-and-search/02-content-based-recommender.ipynb
         text: Song Recommender
+      - href: embeddings-and-search/03-grounded-recommendation-explanations.ipynb
+        text: Understanding RAG
     right:
       - icon: github
         href: https://github.com/lakpa/ai-engineering-lab
