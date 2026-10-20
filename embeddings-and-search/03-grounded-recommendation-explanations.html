@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.19">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-10-17">
+<meta name="description" content="Learn how RAG works, where it is useful, and its limitations using song descriptions and lyrics.">
+
+<title>Understanding RAG Through Song Recommendation Explanations – AI Engineering Lab</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-d3c09cf01b9717715406c5b992d80823.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">AI Engineering Lab</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../embeddings-and-search/01-text-embeddings.html"> 
+<span class="menu-text">Text Embeddings</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../embeddings-and-search/02-content-based-recommender.html"> 
+<span class="menu-text">Song Recommender</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link active" href="../embeddings-and-search/03-grounded-recommendation-explanations.html" aria-current="page"> 
+<span class="menu-text">Understanding RAG</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/lakpa/ai-engineering-lab"> <i class="bi bi-github" role="img" aria-label="GitHub repository">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#what-will-we-learn" id="toc-what-will-we-learn" class="nav-link active" data-scroll-target="#what-will-we-learn">1. What Will We Learn?</a></li>
+  <li><a href="#what-is-rag" id="toc-what-is-rag" class="nav-link" data-scroll-target="#what-is-rag">2. What Is RAG?</a></li>
+  <li><a href="#what-will-we-compare" id="toc-what-will-we-compare" class="nav-link" data-scroll-target="#what-will-we-compare">3. What Will We Compare?</a></li>
+  <li><a href="#experiment-setup" id="toc-experiment-setup" class="nav-link" data-scroll-target="#experiment-setup">4. Experiment Setup</a>
+  <ul class="collapse">
+  <li><a href="#load-the-catalog" id="toc-load-the-catalog" class="nav-link" data-scroll-target="#load-the-catalog">Load the catalog</a></li>
+  <li><a href="#chunk-the-explanation-evidence" id="toc-chunk-the-explanation-evidence" class="nav-link" data-scroll-target="#chunk-the-explanation-evidence">Chunk the explanation evidence</a></li>
+  <li><a href="#build-two-indexes" id="toc-build-two-indexes" class="nav-link" data-scroll-target="#build-two-indexes">Build two indexes</a></li>
+  </ul></li>
+  <li><a href="#retrieval-find-candidate-songs" id="toc-retrieval-find-candidate-songs" class="nav-link" data-scroll-target="#retrieval-find-candidate-songs">5. Retrieval: Find Candidate Songs</a></li>
+  <li><a href="#augmentation-prepare-the-evidence" id="toc-augmentation-prepare-the-evidence" class="nav-link" data-scroll-target="#augmentation-prepare-the-evidence">6. Augmentation: Prepare the Evidence</a>
+  <ul class="collapse">
+  <li><a href="#build-the-context-and-prompt" id="toc-build-the-context-and-prompt" class="nav-link" data-scroll-target="#build-the-context-and-prompt">Build the context and prompt</a></li>
+  <li><a href="#check-citation-ids" id="toc-check-citation-ids" class="nav-link" data-scroll-target="#check-citation-ids">Check citation IDs</a></li>
+  </ul></li>
+  <li><a href="#generation-explain-the-recommendations" id="toc-generation-explain-the-recommendations" class="nav-link" data-scroll-target="#generation-explain-the-recommendations">7. Generation: Explain the Recommendations</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">8. Results</a></li>
+  <li><a href="#benefits-drawbacks-and-failure-cases" id="toc-benefits-drawbacks-and-failure-cases" class="nav-link" data-scroll-target="#benefits-drawbacks-and-failure-cases">9. Benefits, Drawbacks, and Failure Cases</a></li>
+  <li><a href="#where-can-we-apply-rag" id="toc-where-can-we-apply-rag" class="nav-link" data-scroll-target="#where-can-we-apply-rag">10. Where Can We Apply RAG?</a>
+  <ul class="collapse">
+  <li><a href="#next-step-from-supplying-evidence-to-learning-a-task" id="toc-next-step-from-supplying-evidence-to-learning-a-task" class="nav-link" data-scroll-target="#next-step-from-supplying-evidence-to-learning-a-task">Next Step: From Supplying Evidence to Learning a Task</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Understanding RAG Through Song Recommendation Explanations</h1>
+<p class="subtitle lead">How retrieval, context, and generation work together</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">rag</div>
+    <div class="quarto-category">embeddings</div>
+    <div class="quarto-category">retrieval</div>
+    <div class="quarto-category">recommendations</div>
+    <div class="quarto-category">llm</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    Learn how RAG works, where it is useful, and its limitations using song descriptions and lyrics.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">October 17, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-will-we-learn" class="level2">
+<h2 class="anchored" data-anchor-id="what-will-we-learn">1. What Will We Learn?</h2>
+<p><strong>The purpose of this notebook is to understand RAG, how it works, and where it is useful.</strong></p>
+<p>RAG stands for Retrieval Augmented Generation. It combines a search system with a language model: the search finds relevant information, and the language model uses that information to write an answer.</p>
+<p>We use song recommendations as a small, concrete example. A recommender first chooses songs. We then collect relevant descriptions and lyrics and ask Llama to explain possible connections with the songs the listener likes.</p>
+<p>By the end, you should be able to explain how source text becomes searchable, how retrieved passages become part of a prompt, and how to check an answer against its sources. You should also understand when RAG is useful and what it cannot guarantee.</p>
+<p>The song recommender provides the example; recommendation itself is not a required part of RAG. The same retrieval and generation steps can answer questions about manuals, policies, research papers, and other document collections.</p>
+</section>
+<section id="what-is-rag" class="level2">
+<h2 class="anchored" data-anchor-id="what-is-rag">2. What Is RAG?</h2>
+<p>Imagine asking an assistant a question about a document it has not been given. Its general knowledge may be insufficient or out of date. RAG addresses this by finding relevant source text and giving it to the model with the question.</p>
+<p>There are two stages.</p>
+<p><strong>Prepare the information.</strong> Load documents, split them into smaller passages called chunks, and convert those chunks into embeddings. An embedding is a list of numbers that helps us compare text by meaning. Store the chunks, embeddings, and source details in a searchable collection.</p>
+<p><strong>Answer a request.</strong> Search for useful passages, put them in the prompt, and ask the language model to answer using them. This gives RAG its name:</p>
+<ol type="1">
+<li><strong>Retrieval:</strong> Find relevant information.</li>
+<li><strong>Augmentation:</strong> Add that information to the model’s prompt.</li>
+<li><strong>Generation:</strong> Produce an answer using the supplied context.</li>
+</ol>
+<p>For example, a question about returning a product could retrieve the relevant paragraph from a store’s return policy. The model can then explain the policy using that paragraph rather than guessing from general knowledge.</p>
+<p>In this notebook, the request is to explain a song recommendation. We retrieve passages from the liked songs and the recommended song, add them to the prompt, and ask Llama to describe a supported connection. MiniLM creates embeddings, Chroma performs the search, and Llama writes the answer.</p>
+<p>There are two searches here: one selects songs, while the other retrieves evidence for the explanation. Only the second search supplies the passages used in the RAG explanation. The selected songs are already fixed when Llama receives the prompt.</p>
+<p>RAG does not retrain the language model. It provides information for the current answer. Updating the source collection can therefore change the evidence available to the model without changing its trained weights.</p>
+</section>
+<section id="what-will-we-compare" class="level2">
+<h2 class="anchored" data-anchor-id="what-will-we-compare">3. What Will We Compare?</h2>
+<p>To see the role of retrieved context, we ask Llama to explain each recommendation twice.</p>
+<p><strong>Without retrieved passages:</strong> Supply only the song IDs, titles, and genres.</p>
+<p><strong>With retrieved passages:</strong> Supply the same details plus relevant descriptions and lyrics.</p>
+<p>We expect the supplied passages to make explanations more specific and easier to check. The comparison lets us inspect what changes when a model has source material available, rather than assuming RAG always improves an answer.</p>
+<p>Each passage has a <strong>chunk ID</strong> so we can find its text and check the model’s claims. This demonstrates the contribution of context; it does not establish that searching is better than supplying the entire small catalog.</p>
+</section>
+<section id="experiment-setup" class="level2">
+<h2 class="anchored" data-anchor-id="experiment-setup">4. Experiment Setup</h2>
+<p>We use eight historical songs with public domain lyrics. This small catalog is separate from the fictional catalog in the earlier notebooks and makes the evidence easy to inspect.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>public-domain-songs.csv</code></td>
+<td>Song details, descriptions, source links, and rights notes</td>
+</tr>
+<tr class="even">
+<td><code>public-domain-song-lyrics.csv</code></td>
+<td>Lyric sections linked to songs</td>
+</tr>
+<tr class="odd">
+<td><code>all-MiniLM-L6-v2</code></td>
+<td>Convert text into embeddings for search</td>
+</tr>
+<tr class="even">
+<td>Chroma</td>
+<td>Store embeddings and find similar records</td>
+</tr>
+<tr class="odd">
+<td><code>llama3.2:3b</code></td>
+<td>Write explanations from the supplied records</td>
+</tr>
+</tbody>
+</table>
+<p>The data contains text, not audio. Descriptions were written for this experiment; source links identify the historical lyrics. Modern recordings and arrangements may have separate rights.</p>
+<p>Run Llama locally using <a href="https://docs.ollama.com/quickstart">Ollama</a>. Download the model and keep Ollama running:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ollama</span> pull llama3.2:3b</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The next cell imports the libraries and sets the model and number of recommendations. We set temperature to <code>0</code> to reduce variation between answers, though this does not guarantee identical or correct output.</p>
+<div id="imports-settings" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> csv</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> dataclasses <span class="im">import</span> dataclass</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> chromadb</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> chromadb.utils <span class="im">import</span> embedding_functions</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> langchain_text_splitters <span class="im">import</span> RecursiveCharacterTextSplitter</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ollama <span class="im">import</span> Client</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>GENERATION_MODEL <span class="op">=</span> <span class="st">"llama3.2:3b"</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>TEMPERATURE <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>N_RECOMMENDATIONS <span class="op">=</span> <span class="dv">3</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="load-the-catalog" class="level3">
+<h3 class="anchored" data-anchor-id="load-the-catalog">Load the catalog</h3>
+<p>Read the CSV rows into <code>Song</code> and <code>LyricSection</code> objects. One song can have several lyric sections, connected by <code>song_id</code>.</p>
+<p>The code checks that every lyric section belongs to an existing song. The path fallback allows execution from either the repository root or this notebook’s directory.</p>
+<div id="load-catalog" class="cell" data-execution_count="29">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span>(frozen<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Song:</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    song_id: <span class="bu">str</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    title: <span class="bu">str</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    artist: <span class="bu">str</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    genre: <span class="bu">str</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    description: <span class="bu">str</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    source_url: <span class="bu">str</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    rights_note: <span class="bu">str</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> recommendation_text(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="ss">f"</span><span class="sc">{</span><span class="va">self</span><span class="sc">.</span>title<span class="sc">}</span><span class="ss"> </span><span class="sc">{</span><span class="va">self</span><span class="sc">.</span>description<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span>(frozen<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> LyricSection:</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    song_id: <span class="bu">str</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    section: <span class="bu">str</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    text: <span class="bu">str</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>catalog_path <span class="op">=</span> Path(<span class="st">"public-domain-songs.csv"</span>)</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>lyrics_path <span class="op">=</span> Path(<span class="st">"public-domain-song-lyrics.csv"</span>)</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> catalog_path.exists():</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    catalog_path <span class="op">=</span> Path(<span class="st">"embeddings-and-search"</span>) <span class="op">/</span> catalog_path</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    lyrics_path <span class="op">=</span> Path(<span class="st">"embeddings-and-search"</span>) <span class="op">/</span> lyrics_path</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> catalog_path.<span class="bu">open</span>(newline<span class="op">=</span><span class="st">""</span>, encoding<span class="op">=</span><span class="st">"utf-8"</span>) <span class="im">as</span> song_file:</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    songs <span class="op">=</span> [</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>        Song(</span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>            song_id<span class="op">=</span>row[<span class="st">"id"</span>],</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>            title<span class="op">=</span>row[<span class="st">"title"</span>],</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>            artist<span class="op">=</span>row[<span class="st">"artist"</span>],</span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>            genre<span class="op">=</span>row[<span class="st">"genre"</span>],</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>            description<span class="op">=</span>row[<span class="st">"description"</span>],</span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>            source_url<span class="op">=</span>row[<span class="st">"source_url"</span>],</span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>            rights_note<span class="op">=</span>row[<span class="st">"rights_note"</span>],</span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> row <span class="kw">in</span> csv.DictReader(song_file)</span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> lyrics_path.<span class="bu">open</span>(newline<span class="op">=</span><span class="st">""</span>, encoding<span class="op">=</span><span class="st">"utf-8"</span>) <span class="im">as</span> lyrics_file:</span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>    lyric_sections <span class="op">=</span> [</span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>        LyricSection(</span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>            song_id<span class="op">=</span>row[<span class="st">"song_id"</span>],</span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>            section<span class="op">=</span>row[<span class="st">"section"</span>],</span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a>            text<span class="op">=</span>row[<span class="st">"text"</span>],</span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> row <span class="kw">in</span> csv.DictReader(lyrics_file)</span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a>songs_by_id <span class="op">=</span> {song.song_id: song <span class="cf">for</span> song <span class="kw">in</span> songs}</span>
+<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a>unknown_lyric_ids <span class="op">=</span> {section.song_id <span class="cf">for</span> section <span class="kw">in</span> lyric_sections} <span class="op">-</span> songs_by_id.keys()</span>
+<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> unknown_lyric_ids:</span>
+<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="ss">f"Lyrics reference unknown songs: </span><span class="sc">{</span><span class="bu">sorted</span>(unknown_lyric_ids)<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Loaded </span><span class="sc">{</span><span class="bu">len</span>(songs)<span class="sc">}</span><span class="ss"> public-domain songs"</span>)</span>
+<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Loaded </span><span class="sc">{</span><span class="bu">len</span>(lyric_sections)<span class="sc">}</span><span class="ss"> lyric sections"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Loaded 8 public-domain songs
+Loaded 27 lyric sections</code></pre>
+</div>
+</div>
+</section>
+<section id="chunk-the-explanation-evidence" class="level3">
+<h3 class="anchored" data-anchor-id="chunk-the-explanation-evidence">Chunk the explanation evidence</h3>
+<p>A <strong>chunk</strong> is a short passage used as evidence. Searching passages helps us select relevant text and cite its exact source.</p>
+<p>The splitter tries paragraph, line, sentence, and space boundaries. Here, <code>chunk_size=180</code> limits chunks to about 180 characters, while <code>chunk_overlap=30</code> allows nearby chunks to share about 30 characters to preserve context. Short descriptions and lyric sections can remain intact.</p>
+<p>Larger chunks preserve more context; smaller chunks focus the search. Overlap can protect a phrase at a boundary but also repeats text. These settings are teaching examples, not universal defaults.</p>
+<p>Each chunk keeps its song ID, source type, section, URL, and rights note.</p>
+<div id="chunk-catalog" class="cell" data-execution_count="30">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>splitter <span class="op">=</span> RecursiveCharacterTextSplitter(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    separators<span class="op">=</span>[<span class="st">"</span><span class="ch">\n\n</span><span class="st">"</span>, <span class="st">"</span><span class="ch">\n</span><span class="st">"</span>, <span class="st">". "</span> , <span class="st">" "</span>],</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    chunk_size<span class="op">=</span><span class="dv">180</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    chunk_overlap<span class="op">=</span><span class="dv">30</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>description_sources <span class="op">=</span> [</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    {</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"song"</span>: song,</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"source_type"</span>: <span class="st">"description"</span>,</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"section"</span>: <span class="st">"catalog_description"</span>,</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"text"</span>: song.description,</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> song <span class="kw">in</span> songs</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>]</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>lyric_sources <span class="op">=</span> [</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    {</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>        <span class="st">"song"</span>: songs_by_id[lyric.song_id],</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>        <span class="st">"source_type"</span>: <span class="st">"lyrics"</span>,</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>        <span class="st">"section"</span>: lyric.section,</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>        <span class="st">"text"</span>: lyric.text,</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> lyric <span class="kw">in</span> lyric_sections</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>]</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>evidence_sources <span class="op">=</span> description_sources <span class="op">+</span> lyric_sources</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>evidence_chunks <span class="op">=</span> []</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> source <span class="kw">in</span> evidence_sources:</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>    song <span class="op">=</span> source[<span class="st">"song"</span>]</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> chunk_index, text <span class="kw">in</span> <span class="bu">enumerate</span>(splitter.split_text(source[<span class="st">"text"</span>])):</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>        evidence_chunks.append(</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>            {</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>                <span class="st">"id"</span>: (</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>                    <span class="ss">f"</span><span class="sc">{</span>song<span class="sc">.</span>song_id<span class="sc">}</span><span class="ss">:</span><span class="sc">{</span>source[<span class="st">'source_type'</span>]<span class="sc">}</span><span class="ss">:"</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>                    <span class="ss">f"</span><span class="sc">{</span>source[<span class="st">'section'</span>]<span class="sc">}</span><span class="ss">:chunk-</span><span class="sc">{</span>chunk_index<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>                ),</span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>                <span class="st">"text"</span>: text,</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>                <span class="st">"metadata"</span>: {</span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"song_id"</span>: song.song_id,</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"title"</span>: song.title,</span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"genre"</span>: song.genre,</span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"source_type"</span>: source[<span class="st">"source_type"</span>],</span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"section"</span>: source[<span class="st">"section"</span>],</span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"source_url"</span>: song.source_url,</span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"rights_note"</span>: song.rights_note,</span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"chunk_index"</span>: chunk_index,</span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a>                },</span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Created </span><span class="sc">{</span><span class="bu">len</span>(evidence_chunks)<span class="sc">}</span><span class="ss"> evidence chunks from </span><span class="sc">{</span><span class="bu">len</span>(evidence_sources)<span class="sc">}</span><span class="ss"> sources"</span>)</span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> chunk <span class="kw">in</span> evidence_chunks[:<span class="dv">3</span>]:</span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="sc">{</span>chunk[<span class="st">'id'</span>]<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>chunk[<span class="st">'text'</span>]<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Created 65 evidence chunks from 35 sources
+
+pd_001:description:catalog_description:chunk-0: A song of longing for an absent loved one, remembered through images of summer, flowing water, and a voice that is gone.
+
+pd_002:description:catalog_description:chunk-0: A declaration of lasting devotion to Annie Laurie, whose remembered promise inspires complete loyalty.
+
+pd_003:description:catalog_description:chunk-0: A promise that love will endure after youth and beauty fade, grounded in constancy rather than appearance.</code></pre>
+</div>
+</div>
+</section>
+<section id="build-two-indexes" class="level3">
+<h3 class="anchored" data-anchor-id="build-two-indexes">Build two indexes</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Collection</th>
+<th>Stores</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Recommendation</td>
+<td>One title and description document per song</td>
+<td>Choosing similar songs</td>
+</tr>
+<tr class="even">
+<td>Evidence</td>
+<td>Description and lyric chunks with source details</td>
+<td>Gathering passages for explanations</td>
+</tr>
+</tbody>
+</table>
+<p>Keeping these separate means songs with more lyrics do not get extra entries in the recommendation search. MiniLM embeds the text in both collections.</p>
+<p><code>upsert</code> inserts new IDs or updates existing IDs, so rerunning the cell does not duplicate those records.</p>
+<div id="index-catalog" class="cell" data-execution_count="31">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>client <span class="op">=</span> chromadb.Client()</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>embedding_function <span class="op">=</span> embedding_functions.SentenceTransformerEmbeddingFunction(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    model_name<span class="op">=</span><span class="st">"all-MiniLM-L6-v2"</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>recommendation_collection <span class="op">=</span> client.get_or_create_collection(</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    name<span class="op">=</span><span class="st">"public_domain_song_recommendations"</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    embedding_function<span class="op">=</span>embedding_function,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    configuration<span class="op">=</span>{<span class="st">"hnsw"</span>: {<span class="st">"space"</span>: <span class="st">"cosine"</span>}},</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>recommendation_collection.upsert(</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    ids<span class="op">=</span>[song.song_id <span class="cf">for</span> song <span class="kw">in</span> songs],</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    documents<span class="op">=</span>[song.recommendation_text() <span class="cf">for</span> song <span class="kw">in</span> songs],</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>evidence_collection <span class="op">=</span> client.get_or_create_collection(</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    name<span class="op">=</span><span class="st">"public_domain_song_evidence"</span>,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    embedding_function<span class="op">=</span>embedding_function,</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>    configuration<span class="op">=</span>{<span class="st">"hnsw"</span>: {<span class="st">"space"</span>: <span class="st">"cosine"</span>}},</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>evidence_collection.upsert(</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>    ids<span class="op">=</span>[chunk[<span class="st">"id"</span>] <span class="cf">for</span> chunk <span class="kw">in</span> evidence_chunks],</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>    documents<span class="op">=</span>[chunk[<span class="st">"text"</span>] <span class="cf">for</span> chunk <span class="kw">in</span> evidence_chunks],</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>    metadatas<span class="op">=</span>[chunk[<span class="st">"metadata"</span>] <span class="cf">for</span> chunk <span class="kw">in</span> evidence_chunks],</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Indexed </span><span class="sc">{</span>recommendation_collection<span class="sc">.</span>count()<span class="sc">}</span><span class="ss"> songs"</span>)</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Indexed </span><span class="sc">{</span>evidence_collection<span class="sc">.</span>count()<span class="sc">}</span><span class="ss"> evidence chunks"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Indexed 8 songs
+Indexed 65 evidence chunks</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="retrieval-find-candidate-songs" class="level2">
+<h2 class="anchored" data-anchor-id="retrieval-find-candidate-songs">5. Retrieval: Find Candidate Songs</h2>
+<p>Before explaining anything, we need songs to explain. <code>recommend()</code> retrieves the embeddings of the liked songs and averages them into one vector representing the listener’s interests. Chroma ranks catalog songs by similarity to that vector. The function excludes liked songs and returns the requested number of recommendations.</p>
+<p>This is a comparison of text meanings, not a comparison of audio. An average can blur different interests, so it may return weak matches. Llama does not select or rerank the songs; the explanation stage should make a weak connection visible rather than disguise it.</p>
+<div id="recommender" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> recommend(liked: <span class="bu">list</span>[Song], n_results: <span class="bu">int</span> <span class="op">=</span> <span class="dv">3</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[Song]:</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    liked_ids <span class="op">=</span> <span class="bu">list</span>(<span class="bu">dict</span>.fromkeys(song.song_id <span class="cf">for</span> song <span class="kw">in</span> liked))</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">not</span> liked_ids <span class="kw">or</span> n_results <span class="op">&lt;=</span> <span class="dv">0</span>:</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> []</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    stored <span class="op">=</span> recommendation_collection.get(ids<span class="op">=</span>liked_ids, include<span class="op">=</span>[<span class="st">"embeddings"</span>])</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    embeddings <span class="op">=</span> stored[<span class="st">"embeddings"</span>]</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> embeddings <span class="kw">is</span> <span class="va">None</span> <span class="kw">or</span> <span class="bu">len</span>(embeddings) <span class="op">!=</span> <span class="bu">len</span>(liked_ids):</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">"A liked song is missing an embedding"</span>)</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    values_by_dimension <span class="op">=</span> <span class="bu">zip</span>(<span class="op">*</span>embeddings)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Average each dimension across all liked-song embeddings.</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>    average_embeddings <span class="op">=</span> [</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>        <span class="bu">sum</span>(<span class="bu">float</span>(value) <span class="cf">for</span> value <span class="kw">in</span> dimension_values) <span class="op">/</span> <span class="bu">len</span>(embeddings)</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> dimension_values <span class="kw">in</span> values_by_dimension</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>    results <span class="op">=</span> recommendation_collection.query(</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>        query_embeddings<span class="op">=</span>[average_embeddings],</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>        n_results<span class="op">=</span>recommendation_collection.count(),</span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>    recommendations <span class="op">=</span> [</span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>        songs_by_id[song_id]</span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> song_id <span class="kw">in</span> results[<span class="st">"ids"</span>][<span class="dv">0</span>]</span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> song_id <span class="kw">not</span> <span class="kw">in</span> liked_ids</span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> recommendations[:n_results]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="main-listener" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>liked_songs <span class="op">=</span> [songs_by_id[song_id] <span class="cf">for</span> song_id <span class="kw">in</span> (<span class="st">"pd_001"</span>, <span class="st">"pd_002"</span>, <span class="st">"pd_003"</span>)]</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>recommendations <span class="op">=</span> recommend(liked_songs, N_RECOMMENDATIONS)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Liked songs:"</span>)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> song <span class="kw">in</span> liked_songs:</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"- </span><span class="sc">{</span>song<span class="sc">.</span>song_id<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>song<span class="sc">.</span>title<span class="sc">}</span><span class="ss"> [</span><span class="sc">{</span>song<span class="sc">.</span>genre<span class="sc">}</span><span class="ss">]</span><span class="ch">\n</span><span class="ss">  </span><span class="sc">{</span>song<span class="sc">.</span>description<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  Source: </span><span class="sc">{</span>song<span class="sc">.</span>source_url<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">Retrieved recommendations:"</span>)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> song <span class="kw">in</span> recommendations:</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"- </span><span class="sc">{</span>song<span class="sc">.</span>song_id<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>song<span class="sc">.</span>title<span class="sc">}</span><span class="ss"> [</span><span class="sc">{</span>song<span class="sc">.</span>genre<span class="sc">}</span><span class="ss">]</span><span class="ch">\n</span><span class="ss">  </span><span class="sc">{</span>song<span class="sc">.</span>description<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  Source: </span><span class="sc">{</span>song<span class="sc">.</span>source_url<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="augmentation-prepare-the-evidence" class="level2">
+<h2 class="anchored" data-anchor-id="augmentation-prepare-the-evidence">6. Augmentation: Prepare the Evidence</h2>
+<p>The explanation needs support from both sides: passages showing a theme in the liked songs and passages showing whether the recommendation shares it. Without the recommended song’s text, the model could describe the listener’s interests without demonstrating that the new song relates to them.</p>
+<p><code>retrieve_evidence()</code> builds one search text from the recommended song’s title and description and all the liked songs’ descriptions. It then visits each involved song separately. Chroma uses MiniLM to embed the search text and compare it with the stored chunk embeddings.</p>
+<p>The <code>song_id</code> filter means “search only this song.” With the default settings, each search returns up to two matching passages. The function puts each passage into a dictionary containing its text, chunk ID, source details, and role (<code>liked</code> or <code>recommended</code>), then returns the list.</p>
+<p>This function gathers evidence; Llama later interprets the connection. Restricting searches to the involved songs ensures that each can contribute evidence, but the closest passage in a song can still be a poor match. There is no minimum similarity requirement here, and two passages may omit context or repeat overlapping text.</p>
+<div id="evidence-retrieval" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> retrieve_evidence(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    liked: <span class="bu">list</span>[Song],</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    recommended: Song,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    chunks_per_song: <span class="bu">int</span> <span class="op">=</span> <span class="dv">2</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="bu">list</span>[<span class="bu">dict</span>]:</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    liked_descriptions <span class="op">=</span> <span class="st">" "</span>.join(song.description <span class="cf">for</span> song <span class="kw">in</span> liked)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    question <span class="op">=</span> (</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"Recommended song: </span><span class="sc">{</span>recommended<span class="sc">.</span>title<span class="sc">}</span><span class="ss">. </span><span class="sc">{</span>recommended<span class="sc">.</span>description<span class="sc">}</span><span class="ss"> "</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"Liked-song themes: </span><span class="sc">{</span>liked_descriptions<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    records <span class="op">=</span> []</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> song <span class="kw">in</span> [<span class="op">*</span>liked, recommended]:</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>        result <span class="op">=</span> evidence_collection.query(</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>            query_texts<span class="op">=</span>[question],</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>            n_results<span class="op">=</span>chunks_per_song,</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>            where<span class="op">=</span>{<span class="st">"song_id"</span>: song.song_id},</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>            include<span class="op">=</span>[<span class="st">"documents"</span>, <span class="st">"metadatas"</span>],</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> chunk_id, text, metadata <span class="kw">in</span> <span class="bu">zip</span>(</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>            result[<span class="st">"ids"</span>][<span class="dv">0</span>],</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>            result[<span class="st">"documents"</span>][<span class="dv">0</span>],</span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>            result[<span class="st">"metadatas"</span>][<span class="dv">0</span>],</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>        ):</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>            records.append(</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>                {</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"chunk_id"</span>: chunk_id,</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"text"</span>: text,</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"metadata"</span>: metadata,</span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"role"</span>: (</span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"recommended"</span></span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>                        <span class="cf">if</span> song.song_id <span class="op">==</span> recommended.song_id</span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>                        <span class="cf">else</span> <span class="st">"liked"</span></span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a>                    ),</span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a>                }</span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> records</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="build-the-context-and-prompt" class="level3">
+<h3 class="anchored" data-anchor-id="build-the-context-and-prompt">Build the context and prompt</h3>
+<p><code>build_metadata_context()</code> lists the involved songs and labels each as liked or recommended. <code>build_context()</code> adds the retrieved passages when evidence is provided.</p>
+<p><code>build_prompt()</code> combines that context with instructions to cite source IDs, avoid unsupported claims, and admit weak connections. This is the augmentation step: we give Llama the information it should use for this particular answer.</p>
+<div id="context-functions" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> build_metadata_context(liked: <span class="bu">list</span>[Song], recommended: Song) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    songs_for_context <span class="op">=</span> [<span class="op">*</span>liked, recommended]</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="st">"</span><span class="ch">\n</span><span class="st">"</span>.join(</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"&lt;song role='</span><span class="sc">{</span>(<span class="st">'recommended'</span> <span class="cf">if</span> song.song_id <span class="op">==</span> recommended.song_id <span class="cf">else</span> <span class="st">'liked'</span>)<span class="sc">}</span><span class="ss">' "</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"id='</span><span class="sc">{</span>song<span class="sc">.</span>song_id<span class="sc">}</span><span class="ss">' title='</span><span class="sc">{</span>song<span class="sc">.</span>title<span class="sc">}</span><span class="ss">' genre='</span><span class="sc">{</span>song<span class="sc">.</span>genre<span class="sc">}</span><span class="ss">' /&gt;"</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> song <span class="kw">in</span> songs_for_context</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> build_context(</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    liked: <span class="bu">list</span>[Song],</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    recommended: Song,</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    evidence: <span class="bu">list</span>[<span class="bu">dict</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>    metadata_context <span class="op">=</span> build_metadata_context(liked, recommended)</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> evidence <span class="kw">is</span> <span class="va">None</span>:</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> metadata_context</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    evidence_context <span class="op">=</span> <span class="st">"</span><span class="ch">\n\n</span><span class="st">"</span>.join(</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>        (</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"&lt;evidence role='</span><span class="sc">{</span>record[<span class="st">'role'</span>]<span class="sc">}</span><span class="ss">' chunk_id='</span><span class="sc">{</span>record[<span class="st">'chunk_id'</span>]<span class="sc">}</span><span class="ss">' "</span></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"song_id='</span><span class="sc">{</span>record[<span class="st">'metadata'</span>][<span class="st">'song_id'</span>]<span class="sc">}</span><span class="ss">' "</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"source_type='</span><span class="sc">{</span>record[<span class="st">'metadata'</span>][<span class="st">'source_type'</span>]<span class="sc">}</span><span class="ss">' "</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"section='</span><span class="sc">{</span>record[<span class="st">'metadata'</span>][<span class="st">'section'</span>]<span class="sc">}</span><span class="ss">' "</span></span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"source_url='</span><span class="sc">{</span>record[<span class="st">'metadata'</span>][<span class="st">'source_url'</span>]<span class="sc">}</span><span class="ss">'&gt;</span><span class="ch">\n</span><span class="ss">"</span></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"</span><span class="sc">{</span>record[<span class="st">'text'</span>]<span class="sc">}</span><span class="ch">\n</span><span class="ss">"</span></span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"&lt;/evidence&gt;"</span></span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> record <span class="kw">in</span> evidence</span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="ss">f"</span><span class="sc">{</span>metadata_context<span class="sc">}</span><span class="ch">\n\n</span><span class="sc">{</span>evidence_context<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> build_prompt(context: <span class="bu">str</span>, recommended: Song) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="ss">f"""</span></span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a><span class="ss">Explain why </span><span class="sc">{</span>recommended<span class="sc">.</span>title<span class="sc">}</span><span class="ss"> (</span><span class="sc">{</span>recommended<span class="sc">.</span>song_id<span class="sc">}</span><span class="ss">) was recommended.</span></span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a><span class="ss">Use only the records in &lt;context&gt;.</span></span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a><span class="ss">- Write no more than three sentences.</span></span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a><span class="ss">- Cite supporting song IDs.</span></span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true" tabindex="-1"></a><span class="ss">- Every claim based on a description or lyric must cite at least one exact chunk ID from the context.</span></span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true" tabindex="-1"></a><span class="ss">- Do not invent audio qualities, listener preferences, or catalog facts.</span></span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true" tabindex="-1"></a><span class="ss">- If the connection is weak or contradictory, say so explicitly.</span></span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true" tabindex="-1"></a><span class="ss">- Do not promise that the listener will enjoy the song.</span></span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true" tabindex="-1"></a><span class="ss">&lt;context&gt;</span></span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true" tabindex="-1"></a><span class="sc">{</span>context<span class="sc">}</span></span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true" tabindex="-1"></a><span class="ss">&lt;/context&gt;</span></span>
+<span id="cb12-49"><a href="#cb12-49" aria-hidden="true" tabindex="-1"></a><span class="ss">"""</span>.strip()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="check-citation-ids" class="level3">
+<h3 class="anchored" data-anchor-id="check-citation-ids">Check citation IDs</h3>
+<p>A citation is useful only if we can find its source. <code>check_citations()</code> extracts IDs matching the notebook’s citation pattern and checks them against the supplied song and chunk IDs. It also reports whether the answer contains a chunk citation.</p>
+<p>This catches references to unknown IDs in that format. It does not verify quotations, check every claim for a citation, or determine whether a passage supports the sentence citing it. Those checks require reading the explanation alongside the evidence.</p>
+<div id="citation-functions" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>CITATION_PATTERN <span class="op">=</span> re.<span class="bu">compile</span>(<span class="vs">r"</span><span class="dv">\b</span><span class="vs">pd_</span><span class="dv">\d</span><span class="op">{3}</span>(?:<span class="vs">:</span><span class="pp">[A-Za-z0-9_-]</span><span class="op">+</span>)<span class="op">{0,3}</span><span class="dv">\b</span><span class="vs">"</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> check_citations(</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    explanation: <span class="bu">str</span>,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    liked: <span class="bu">list</span>[Song],</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    recommended: Song,</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    evidence: <span class="bu">list</span>[<span class="bu">dict</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="bu">dict</span>:</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    evidence <span class="op">=</span> evidence <span class="kw">or</span> []</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    permitted_ids <span class="op">=</span> {song.song_id <span class="cf">for</span> song <span class="kw">in</span> [<span class="op">*</span>liked, recommended]}</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    permitted_ids.update(record[<span class="st">"chunk_id"</span>] <span class="cf">for</span> record <span class="kw">in</span> evidence)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    cited_ids <span class="op">=</span> <span class="bu">set</span>(CITATION_PATTERN.findall(explanation))</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>    cited_chunk_ids <span class="op">=</span> {citation <span class="cf">for</span> citation <span class="kw">in</span> cited_ids <span class="cf">if</span> <span class="st">":"</span> <span class="kw">in</span> citation}</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>        <span class="st">"invalid_ids"</span>: <span class="bu">sorted</span>(cited_ids <span class="op">-</span> permitted_ids),</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>        <span class="st">"has_chunk_citation"</span>: <span class="bu">bool</span>(cited_chunk_ids),</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>    }</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="inspect-prompt" class="cell" data-execution_count="35">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>example_evidence <span class="op">=</span> retrieve_evidence(liked_songs, recommendations[<span class="dv">0</span>])</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>example_context <span class="op">=</span> build_context(</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    liked_songs, recommendations[<span class="dv">0</span>], evidence<span class="op">=</span>example_evidence</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>example_prompt <span class="op">=</span> build_prompt(example_context, recommendations[<span class="dv">0</span>])</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(example_prompt)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Explain why The Last Rose of Summer (pd_006) was recommended.
+
+Use only the records in &lt;context&gt;.
+- Write no more than three sentences.
+- Cite supporting song IDs.
+- Every claim based on a description or lyric must cite at least one exact chunk ID from the context.
+- Do not invent audio qualities, listener preferences, or catalog facts.
+- If the connection is weak or contradictory, say so explicitly.
+- Do not promise that the listener will enjoy the song.
+
+&lt;context&gt;
+&lt;song role='liked' id='pd_001' title='Jeanie with the Light Brown Hair' genre='Parlor song' /&gt;
+&lt;song role='liked' id='pd_002' title='Annie Laurie' genre='Scottish folk song' /&gt;
+&lt;song role='liked' id='pd_003' title='Believe Me If All Those Endearing Young Charms' genre='Irish melody' /&gt;
+&lt;song role='recommended' id='pd_006' title='The Last Rose of Summer' genre='Irish melody' /&gt;
+
+&lt;evidence role='liked' chunk_id='pd_001:description:catalog_description:chunk-0' song_id='pd_001' source_type='description' section='catalog_description' source_url='https://en.wikisource.org/wiki/Jeanie_with_the_Light_Brown_Hair'&gt;
+A song of longing for an absent loved one, remembered through images of summer, flowing water, and a voice that is gone.
+&lt;/evidence&gt;
+
+&lt;evidence role='liked' chunk_id='pd_001:lyrics:verse_2:chunk-1' song_id='pd_001' source_type='lyrics' section='verse_2' source_url='https://en.wikisource.org/wiki/Jeanie_with_the_Light_Brown_Hair'&gt;
+o'er the fond hopes that die: sighing like the night wind and sobbing like the rain, waiting for the lost one that comes not again: I long for Jeanie, and my heart bows low, never
+&lt;/evidence&gt;
+
+&lt;evidence role='liked' chunk_id='pd_002:description:catalog_description:chunk-0' song_id='pd_002' source_type='description' section='catalog_description' source_url='https://en.wikisource.org/wiki/Annie_Laurie'&gt;
+A declaration of lasting devotion to Annie Laurie, whose remembered promise inspires complete loyalty.
+&lt;/evidence&gt;
+
+&lt;evidence role='liked' chunk_id='pd_002:lyrics:verse_1:chunk-0' song_id='pd_002' source_type='lyrics' section='verse_1' source_url='https://en.wikisource.org/wiki/Annie_Laurie'&gt;
+Maxwelton's braes are bonnie, where early fa's the dew, and 'twas there that Annie Laurie gave me her promise true; gave me her promise true, which ne'er forgot will be, and for
+&lt;/evidence&gt;
+
+&lt;evidence role='liked' chunk_id='pd_003:lyrics:verse_1:chunk-1' song_id='pd_003' source_type='lyrics' section='verse_1' source_url='https://en.wikisource.org/wiki/The_Canadian_Soldiers%27_Song_Book/Believe_Me_If_All_Those_Endearing_Young_Charms'&gt;
+fading away, thou would'st still be adored as this moment thou art, let thy loveliness fade as it will, and around the dear ruin each wish of my heart would entwine itself
+&lt;/evidence&gt;
+
+&lt;evidence role='liked' chunk_id='pd_003:description:catalog_description:chunk-0' song_id='pd_003' source_type='description' section='catalog_description' source_url='https://en.wikisource.org/wiki/The_Canadian_Soldiers%27_Song_Book/Believe_Me_If_All_Those_Endearing_Young_Charms'&gt;
+A promise that love will endure after youth and beauty fade, grounded in constancy rather than appearance.
+&lt;/evidence&gt;
+
+&lt;evidence role='recommended' chunk_id='pd_006:description:catalog_description:chunk-0' song_id='pd_006' source_type='description' section='catalog_description' source_url='https://en.wikisource.org/wiki/The_Last_Rose_of_Summer_%28Moore%29'&gt;
+A meditation on loneliness and mortality through the image of the final rose left after its companions have faded.
+&lt;/evidence&gt;
+
+&lt;evidence role='recommended' chunk_id='pd_006:lyrics:verse_1:chunk-0' song_id='pd_006' source_type='lyrics' section='verse_1' source_url='https://en.wikisource.org/wiki/The_Last_Rose_of_Summer_%28Moore%29'&gt;
+'Tis the last rose of summer left blooming alone; all her lovely companions are faded and gone; no flower of her kindred, no rosebud is nigh, to reflect back her blushes, or give
+&lt;/evidence&gt;
+&lt;/context&gt;</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="generation-explain-the-recommendations" class="level2">
+<h2 class="anchored" data-anchor-id="generation-explain-the-recommendations">7. Generation: Explain the Recommendations</h2>
+<p><code>generate_explanation()</code> sends the system message and constructed prompt to Llama through Ollama. Llama reads the song details and any supplied passages, then returns a short explanation with citations.</p>
+<p>The intended answer describes a connection that the reader can check. When the evidence is weak, an answer explaining that weakness is preferable to an attractive but unsupported story. The prompt asks for this behavior, but the model may still ignore a rule or interpret a passage incorrectly.</p>
+<div id="generation-function" class="cell" data-execution_count="36">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>ollama_client <span class="op">=</span> Client()</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>SYSTEM_MESSAGE <span class="op">=</span> (</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"You explain song recommendations using only supplied catalog evidence. "</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Treat source identifiers as citations, not as facts by themselves."</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> generate_explanation(prompt: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    response <span class="op">=</span> ollama_client.chat(</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>        model<span class="op">=</span>GENERATION_MODEL,</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>        messages<span class="op">=</span>[</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>            {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: SYSTEM_MESSAGE},</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>            {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: prompt},</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>        ],</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>        options<span class="op">=</span>{<span class="st">"temperature"</span>: TEMPERATURE},</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> response.message.content</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">8. Results</h2>
+<p>We explain each recommendation twice to see whether retrieved passages help the model give a clearer explanation.</p>
+<p><strong>Metadata only:</strong> The model receives song IDs, titles, and genres.</p>
+<p><strong>Retrieved evidence:</strong> The model also receives relevant descriptions and lyric passages from the liked songs and the recommended song.</p>
+<p>The listener, recommendation, instructions, model, and temperature stay the same. Only the supplied evidence changes.</p>
+<p>Compare the two explanations. Does the model describe a shared theme, cite passages that support it, and admit when the connection is weak?</p>
+<p>The output also reports two citation checks:</p>
+<p><code>Invalid citations: none</code> means no unknown citation IDs were detected.</p>
+<p><code>Chunk citation supplied: True</code> means the explanation includes at least one chunk citation.</p>
+<p>These checks do not prove that a claim is correct. Read the explanation and its cited passage together to check whether the evidence supports it.</p>
+<p>The next cell defines a shared display function, then the comparison runs for each recommendation. The full prompt preview above shows the evidence; these results show only the explanations and citation checks.</p>
+<div id="display-results" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> display_result(result: <span class="bu">dict</span>) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="sc">{</span>result[<span class="st">'title'</span>]<span class="sc">}</span><span class="ss"> — </span><span class="sc">{</span>result[<span class="st">'condition'</span>]<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(result[<span class="st">"explanation"</span>])</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    check <span class="op">=</span> result[<span class="st">"citation_check"</span>]</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Invalid citations: </span><span class="sc">{</span>check[<span class="st">'invalid_ids'</span>] <span class="kw">or</span> <span class="st">'none'</span><span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> result[<span class="st">"evidence_ids"</span>]:</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"Chunk citation supplied: </span><span class="sc">{</span>check[<span class="st">'has_chunk_citation'</span>]<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="run-comparison" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>comparison_results <span class="op">=</span> []</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> recommended <span class="kw">in</span> recommendations:</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> condition, include_evidence <span class="kw">in</span> (</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"metadata_only"</span>, <span class="va">False</span>),</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"retrieved_evidence"</span>, <span class="va">True</span>),</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    ):</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>        evidence <span class="op">=</span> (</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>            retrieve_evidence(liked_songs, recommended)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> include_evidence</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span> <span class="va">None</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>        context <span class="op">=</span> build_context(liked_songs, recommended, evidence<span class="op">=</span>evidence)</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>        explanation <span class="op">=</span> generate_explanation(build_prompt(context, recommended))</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>        citation_check <span class="op">=</span> check_citations(</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>            explanation, liked_songs, recommended, evidence</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>        comparison_results.append(</span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>            {</span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>                <span class="st">"song_id"</span>: recommended.song_id,</span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>                <span class="st">"title"</span>: recommended.title,</span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>                <span class="st">"condition"</span>: condition,</span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>                <span class="st">"explanation"</span>: explanation,</span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>                <span class="st">"evidence_ids"</span>: [</span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>                    record[<span class="st">"chunk_id"</span>] <span class="cf">for</span> record <span class="kw">in</span> (evidence <span class="kw">or</span> [])</span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>                ],</span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>                <span class="st">"citation_check"</span>: citation_check,</span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> result <span class="kw">in</span> comparison_results:</span>
+<span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a>    display_result(result)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="benefits-drawbacks-and-failure-cases" class="level2">
+<h2 class="anchored" data-anchor-id="benefits-drawbacks-and-failure-cases">9. Benefits, Drawbacks, and Failure Cases</h2>
+<p>The main benefit of explanation RAG is <strong>traceability</strong>: the reader can inspect the passages behind an explanation instead of accepting a general statement about the songs. It also lets the model use the catalog’s chosen text without relying on whether it encountered those sources during training.</p>
+<p>That benefit depends on several things going right:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Limitation</th>
+<th>What can happen here</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Missing context</td>
+<td>Two chunks per song can leave out a verse that changes the interpretation.</td>
+</tr>
+<tr class="even">
+<td>Weak retrieval</td>
+<td>A search returns the closest passages even when none provides a strong connection.</td>
+</tr>
+<tr class="odd">
+<td>Selective evidence</td>
+<td>A query built from the recommendation can favor matching themes and miss contradictions.</td>
+</tr>
+<tr class="even">
+<td>Model mistakes</td>
+<td>Llama can misread a passage, invent a detail, or attach a valid citation to an unsupported claim.</td>
+</tr>
+<tr class="odd">
+<td>Extra work</td>
+<td>Chunking, embeddings, searches, and longer prompts add complexity and runtime.</td>
+</tr>
+<tr class="even">
+<td>Limited scope</td>
+<td>Lyrics and descriptions cannot establish audio qualities or whether the listener will enjoy a recording.</td>
+</tr>
+</tbody>
+</table>
+<p>The lyric passages were not used to rank the recommendations, so they may support a plausible connection without explaining why the embedding search ranked a particular song highly.</p>
+<p>Use this checklist to evaluate the answers:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Check</th>
+<th>Question</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Specificity</td>
+<td>Does the explanation identify a clear shared or conflicting theme?</td>
+</tr>
+<tr class="even">
+<td>Citation validity</td>
+<td>Were the cited IDs supplied in the prompt?</td>
+</tr>
+<tr class="odd">
+<td>Support</td>
+<td>Do the actual passages support the claims and quotations?</td>
+</tr>
+<tr class="even">
+<td>Caution</td>
+<td>Does it admit weak connections and avoid promising enjoyment?</td>
+</tr>
+</tbody>
+</table>
+<p>The next cell tries a listener with different interests. This explores less obvious connections, though it does not guarantee weak matches. The first recommendation is simply the closest available candidate, not necessarily a strong choice.</p>
+<p>To audit a result, locate its chunk IDs in <code>evidence_chunks</code> and compare the text with each claim. Check evidence for both the liked songs and the recommended song. A fluent answer with valid IDs can still fail this review.</p>
+<div id="mixed-listener" class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>mixed_likes <span class="op">=</span> [songs_by_id[song_id] <span class="cf">for</span> song_id <span class="kw">in</span> (<span class="st">"pd_005"</span>, <span class="st">"pd_008"</span>)]</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>mixed_recommendations <span class="op">=</span> recommend(mixed_likes, N_RECOMMENDATIONS)</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Mixed listener recommendations:"</span>)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> recommended <span class="kw">in</span> mixed_recommendations:</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"- </span><span class="sc">{</span>recommended<span class="sc">.</span>song_id<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>recommended<span class="sc">.</span>title<span class="sc">}</span><span class="ss"> — </span><span class="sc">{</span>recommended<span class="sc">.</span>description<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> recommended <span class="kw">in</span> mixed_recommendations:</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    evidence <span class="op">=</span> retrieve_evidence(mixed_likes, recommended)</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    context <span class="op">=</span> build_context(mixed_likes, recommended, evidence<span class="op">=</span>evidence)</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    explanation <span class="op">=</span> generate_explanation(build_prompt(context, recommended))</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>    display_result(</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>            <span class="st">"title"</span>: recommended.title,</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>            <span class="st">"condition"</span>: <span class="st">"retrieved_evidence"</span>,</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>            <span class="st">"explanation"</span>: explanation,</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>            <span class="st">"evidence_ids"</span>: [record[<span class="st">"chunk_id"</span>] <span class="cf">for</span> record <span class="kw">in</span> evidence],</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>            <span class="st">"citation_check"</span>: check_citations(</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>                explanation, mixed_likes, recommended, evidence</span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>            ),</span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="where-can-we-apply-rag" class="level2">
+<h2 class="anchored" data-anchor-id="where-can-we-apply-rag">10. Where Can We Apply RAG?</h2>
+<p>The song example demonstrates a reusable process: prepare a collection of source passages, retrieve the passages relevant to a request, add them to a prompt, and generate an answer. In another application, the documents and questions change, but these stages remain.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Application</th>
+<th>What retrieval finds</th>
+<th>What the model generates</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Internal knowledge assistant</td>
+<td>Relevant policies and team documentation</td>
+<td>An answer based on the organization’s documents</td>
+</tr>
+<tr class="even">
+<td>Customer support</td>
+<td>Product manuals and support articles</td>
+<td>Instructions suited to the customer’s question</td>
+</tr>
+<tr class="odd">
+<td>Research assistant</td>
+<td>Relevant passages from selected papers</td>
+<td>A summary or comparison with source references</td>
+</tr>
+<tr class="even">
+<td>Technical documentation assistant</td>
+<td>Documentation for a particular product version</td>
+<td>An explanation based on that version</td>
+</tr>
+<tr class="odd">
+<td>Recommendation explanation</td>
+<td>Descriptions and passages for selected items</td>
+<td>An explanation of a possible connection</td>
+</tr>
+</tbody>
+</table>
+<p>RAG is useful when answers depend on a document collection that is large, changes over time, or contains information the model may not know. Retrieval selects a manageable amount of source text for each request. Source IDs also give readers a way to inspect the evidence, although the application must preserve those references.</p>
+<p>RAG adds work: sources must be prepared and maintained, retrieval takes time, and longer prompts add processing cost. A search can miss an important passage, and the model can misinterpret what it receives. In systems with private documents, retrieval must also respect which documents the user is allowed to access.</p>
+<p>For a short document or this tiny song catalog, placing all relevant text directly in the prompt may be simpler. A direct database query is often better for an exact count or lookup. A task based only on general knowledge or creative writing may not need an external collection at all.</p>
+<p>The central lesson is that retrieval supplies information, augmentation makes it available to the model, and generation turns it into an answer. Useful RAG requires both relevant sources and an answer that uses them accurately.</p>
+<section id="next-step-from-supplying-evidence-to-learning-a-task" class="level3">
+<h3 class="anchored" data-anchor-id="next-step-from-supplying-evidence-to-learning-a-task">Next Step: From Supplying Evidence to Learning a Task</h3>
+<p>In this notebook, we supplied Llama with relevant passages so it could explain a recommendation. We changed the information available in its prompt without changing the model itself.</p>
+<p>Now imagine this system receiving messages from users. Some ask for recommendations, others want an explanation, and others report a missing playlist. Before retrieving evidence or writing an answer, the application needs to decide what each message is asking for.</p>
+<p>This introduces a new task: <strong>classifying intent using categories defined for our music service.</strong> A message such as “Why does this song keep appearing?” might ask for a recommendation explanation or report a playback problem. Correct routing depends on the context and the category rules we define. More song lyrics alone will not resolve that distinction.</p>
+<p>We will first try clear instructions and labelled examples in the prompt. If the model repeatedly confuses our categories, we can investigate <strong>fine tuning</strong>: additional training on examples of messages and their expected labels. Unlike supplying passages through RAG, fine tuning updates the model’s trained parameters to encourage the desired classification behavior.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Example message</th>
+<th>Category</th>
+<th>Route</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>I like these songs. What else should I try?</td>
+<td>Recommendation Request</td>
+<td>Existing recommender, given liked song IDs</td>
+</tr>
+<tr class="even">
+<td>Why did you recommend this song?</td>
+<td>Explanation Request</td>
+<td>Existing RAG workflow, given the liked songs and recommendation</td>
+</tr>
+<tr class="odd">
+<td>My playlist disappeared.</td>
+<td>Customer Support</td>
+<td>Support queue</td>
+</tr>
+<tr class="even">
+<td>Can we add our catalog to your service?</td>
+<td>Partnership</td>
+<td>Partnership queue</td>
+</tr>
+<tr class="odd">
+<td>Buy followers through this link.</td>
+<td>Junk</td>
+<td>Junk queue</td>
+</tr>
+<tr class="even">
+<td>I have something to discuss.</td>
+<td>Human Review</td>
+<td>Human review queue</td>
+</tr>
+</tbody>
+</table>
+<p>Start with sample messages rather than a live inbox. Classification identifies intent; the application must separately obtain the song IDs and other details needed to handle the request. Searching directly from a free text theme would require an additional recommendation search function.</p>
+<p>In the next notebook, define the category rules and build a labelled dataset, including ambiguous messages that should go to human review. Establish a baseline using prompting, then fine tune on the training examples. Compare both approaches on the same unseen test messages, keeping those messages out of training and prompt examples.</p>
+<p>The learning question is: <strong>Does fine tuning classify our messages more reliably than prompting alone?</strong> Examine mistakes by category, especially useful messages incorrectly marked as junk, and whether unclear messages reach human review. Fine tuning adds data preparation and training work, so the comparison should establish whether it is worthwhile.</p>
+<p>Fine tuning therefore extends this application rather than replacing RAG. The classifier learns how to route messages according to our examples and rules. When a message requests a recommendation explanation, the existing RAG workflow still retrieves the source passages needed to answer it.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/lakpa\.github\.io\/ai-engineering-lab\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
