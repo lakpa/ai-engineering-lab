@@ -9,5 +9,6 @@ I use small, reproducible experiments to understand embeddings, search, and retr
 
 - [Text Embeddings and Semantic Search](embeddings-and-search/01-text-embeddings.ipynb) builds a song search engine and compares a keyword baseline with embedding retrieval.
 - [A Content-Based Song Recommender](embeddings-and-search/02-content-based-recommender.ipynb) uses three liked songs to recommend unheard songs and inspects the limits of text-based preference vectors.
+- [Understanding RAG Through Song Recommendation Explanations](embeddings-and-search/03-grounded-recommendation-explanations.ipynb) shows how retrieval, context, and generation work together, where RAG is useful, and its limitations.
 
 The [source notebooks and song dataset](https://github.com/lakpa/ai-engineering-lab/tree/main/embeddings-and-search) are available in the repository.
