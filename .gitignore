@@ -157,6 +157,8 @@ activemq-data/
 .env
 .envrc
 .venv
+.venv-x86_64-backup/
+.python/
 env/
 venv/
 ENV/
