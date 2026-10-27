@@ -144,7 +144,14 @@
     "href": "index.html#embeddings-and-search",
     "title": "AI Engineering Lab",
     "section": "Embeddings and search",
-    "text": "Embeddings and search\n\nText Embeddings and Semantic Search builds a song search engine and compares a keyword baseline with embedding retrieval.\nA Content-Based Song Recommender uses three liked songs to recommend unheard songs and inspects the limits of text-based preference vectors.\nUnderstanding RAG Through Song Recommendation Explanations shows how retrieval, context, and generation work together, where RAG is useful, and its limitations.\n\nThe source notebooks and song dataset are available in the repository."
+    "text": "Embeddings and search\n\nText Embeddings and Semantic Search builds a song search engine and compares a keyword baseline with embedding retrieval.\nA Content-Based Song Recommender uses three liked songs to recommend unheard songs and inspects the limits of text-based preference vectors.\nUnderstanding RAG Through Song Recommendation Explanations shows how retrieval, context, and generation work together, where RAG is useful, and its limitations."
+  },
+  {
+    "objectID": "index.html#classification-and-fine-tuning",
+    "href": "index.html#classification-and-fine-tuning",
+    "title": "AI Engineering Lab",
+    "section": "Classification and fine-tuning",
+    "text": "Classification and fine-tuning\n\nPreparing an Intent-Classification Dataset builds, validates, splits, and formats music-service messages for classification and later fine-tuning.\n\nThe source notebooks and song dataset are available in the repository."
   },
   {
     "objectID": "embeddings-and-search/01-text-embeddings.html",
