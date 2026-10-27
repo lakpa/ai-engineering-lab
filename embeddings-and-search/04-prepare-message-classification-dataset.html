@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="dcterms.date" content="2026-10-26">
-<meta name="description" content="Build, validate, split, and format a labelled dataset for routing music-service requests.">
+<meta name="description" content="Build, validate, split, and export labelled music-service messages for local fine-tuning.">
 
 <title>Preparing an Intent-Classification Dataset – AI Engineering Lab</title>
 <style>
@@ -82,7 +82,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-a14d652b86e00f03abd5043129e363d4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-55617497126496852ff9f5a59253c640.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -180,10 +180,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#experiment" id="toc-experiment" class="nav-link" data-scroll-target="#experiment">Experiment</a>
   <ul class="collapse">
   <li><a href="#build-the-labelled-dataset" id="toc-build-the-labelled-dataset" class="nav-link" data-scroll-target="#build-the-labelled-dataset">Build the labelled dataset</a></li>
-  <li><a href="#load-the-tokenizer-and-labelled-data" id="toc-load-the-tokenizer-and-labelled-data" class="nav-link" data-scroll-target="#load-the-tokenizer-and-labelled-data">Load the tokenizer and labelled data</a></li>
-  <li><a href="#format-the-training-and-validation-examples" id="toc-format-the-training-and-validation-examples" class="nav-link" data-scroll-target="#format-the-training-and-validation-examples">Format the training and validation examples</a></li>
-  <li><a href="#format-the-test-examples" id="toc-format-the-test-examples" class="nav-link" data-scroll-target="#format-the-test-examples">Format the test examples</a></li>
-  <li><a href="#assemble-and-save-the-qwen-dataset" id="toc-assemble-and-save-the-qwen-dataset" class="nav-link" data-scroll-target="#assemble-and-save-the-qwen-dataset">Assemble and save the Qwen dataset</a></li>
+  <li><a href="#reload-the-labelled-data" id="toc-reload-the-labelled-data" class="nav-link" data-scroll-target="#reload-the-labelled-data">Reload the labelled data</a></li>
+  <li><a href="#build-the-mlx-lm-training-and-validation-records" id="toc-build-the-mlx-lm-training-and-validation-records" class="nav-link" data-scroll-target="#build-the-mlx-lm-training-and-validation-records">Build the MLX-LM training and validation records</a></li>
+  <li><a href="#build-the-ollama-evaluation-records" id="toc-build-the-ollama-evaluation-records" class="nav-link" data-scroll-target="#build-the-ollama-evaluation-records">Build the Ollama evaluation records</a></li>
+  <li><a href="#export-the-local-training-files" id="toc-export-the-local-training-files" class="nav-link" data-scroll-target="#export-the-local-training-files">Export the local training files</a></li>
   </ul></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#analysis" id="toc-analysis" class="nav-link" data-scroll-target="#analysis">Analysis</a></li>
@@ -199,19 +199,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
 <h1 class="title">Preparing an Intent-Classification Dataset</h1>
-<p class="subtitle lead">From music-service messages to Qwen training examples</p>
+<p class="subtitle lead">From music-service messages to MLX-LM chat data</p>
   <div class="quarto-categories">
     <div class="quarto-category">classification</div>
     <div class="quarto-category">fine-tuning</div>
     <div class="quarto-category">datasets</div>
-    <div class="quarto-category">qwen</div>
+    <div class="quarto-category">mlx</div>
+    <div class="quarto-category">ollama</div>
     <div class="quarto-category">data-preparation</div>
   </div>
   </div>
 
 <div>
   <div class="description">
-    Build, validate, split, and format a labelled dataset for routing music-service requests.
+    Build, validate, split, and export labelled music-service messages for local fine-tuning.
   </div>
 </div>
 
@@ -243,231 +244,218 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="hypothesis" class="level2">
 <h2 class="anchored" data-anchor-id="hypothesis">Hypothesis</h2>
 <p>If we define one source file per intent, remove exact duplicates before splitting, and split every intent separately, the resulting training, validation, and test sets should contain all six categories without exact-message leakage between splits.</p>
-<p>Formatting the examples with Qwen’s chat template should then produce training records containing the expected answer and test records that keep the answer separate for evaluation.</p>
+<p>Exporting complete conversations as MLX-LM chat records should produce training data with the expected answer, while evaluation records should keep the answer outside the messages sent to Ollama.</p>
 </section>
 <section id="environment-setup" class="level2">
 <h2 class="anchored" data-anchor-id="environment-setup">Environment Setup</h2>
-<p>Create or activate the project environment and install the Python dependencies before running the notebook:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> venv .venv</span>
+<p>Create or activate the project environment with Python 3.11 or newer and install the shared dependencies:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3.11</span> <span class="at">-m</span> venv .venv</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> .venv/bin/activate</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-r</span> requirements.txt</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Select the <code>.venv</code> kernel in Jupyter. Install Ollama separately, then pull the corresponding quantized Ollama build of the instruction-tuned Qwen model used by the classification experiment:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ollama</span> pull qwen2.5:0.5b-instruct</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The Ollama tag is a Q4_K_M build of the same model family; it is not numerically identical to the Hugging Face checkpoint. Ollama will run the prompting baseline and, after fine-tuning, the imported model. This preparation notebook still uses <code>AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")</code> to produce Qwen-compatible training text. The first tokenizer load may download files from Hugging Face unless they are already cached.</p>
-<p>Ollama runs models but does not perform the fine-tuning step. A training framework will create the fine-tuned weights or adapter, which can then be imported into Ollama. This notebook only prepares and formats data, so it does not require model-training hardware.</p>
+<p>On an Apple Silicon Mac, install the separate MLX-LM training dependencies:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-r</span> requirements-mlx.txt</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Install Ollama separately and pull the corresponding quantized build used for the prompting baseline:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ollama</span> pull qwen2.5:0.5b-instruct</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>MLX-LM fine-tunes <code>Qwen/Qwen2.5-0.5B-Instruct</code> locally and applies the model’s chat template during training. Ollama runs the Q4_K_M baseline and the fine-tuned model after export; it does not perform the training step itself. This preparation notebook creates the files needed by both stages and does not load the model weights.</p>
 </section>
 <section id="experiment" class="level2">
 <h2 class="anchored" data-anchor-id="experiment">Experiment</h2>
 <p>We will load twelve example messages for each intent, normalize them for duplicate detection, and assign numeric labels from the order of <code>source_files</code>. Each intent is shuffled with a fixed random seed and split approximately 80%/10%/10%.</p>
-<p>After saving the labelled data, we will format the training and validation examples as complete conversations. Test prompts omit the assistant answer so a later notebook can compare the model’s prediction with the stored label.</p>
+<p>After saving the labelled Hugging Face dataset, we will export complete training and validation conversations as JSONL for MLX-LM. Evaluation conversations omit the assistant answer and store the expected category separately for comparison with Ollama predictions.</p>
 <section id="build-the-labelled-dataset" class="level3">
 <h3 class="anchored" data-anchor-id="build-the-labelled-dataset">Build the labelled dataset</h3>
 <p>The first code cell performs the main data-quality work. It accepts execution from either the repository root or the notebook directory, checks every CSV for a <code>text</code> column and non-empty messages, and rejects identical messages assigned to conflicting labels.</p>
 <p><code>casefold()</code> and whitespace normalization make duplicate comparison insensitive to capitalization and repeated spaces. The original message text is preserved in the saved dataset. <code>ClassLabel</code> stores the category names with the numeric labels so later notebooks do not have to reproduce the list order. <code>utf-8-sig</code> accepts ordinary UTF-8 CSVs as well as files containing a byte-order mark.</p>
 <div id="ce928655" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> csv</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> random</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> datasets <span class="im">import</span> ClassLabel, Dataset, DatasetDict, Features, Value, load_from_disk</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>notebook_dir <span class="op">=</span> Path.cwd()</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> (notebook_dir <span class="op">/</span> <span class="st">"intentData"</span>).is_dir():</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    notebook_dir <span class="op">=</span> notebook_dir <span class="op">/</span> <span class="st">"embeddings-and-search"</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>data_dir <span class="op">=</span> notebook_dir <span class="op">/</span> <span class="st">"data"</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>label_names <span class="op">=</span> [</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Recommendation_Request"</span>,</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Explanation_Request"</span>,</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Customer_Support"</span>,</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Partnership"</span>,</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Junk"</span>,</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Human_Review"</span>,</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>]</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>source_files <span class="op">=</span> [</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="st">"recommendation_request.csv"</span>,</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="st">"explanation_request.csv"</span>,</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="st">"customer_support.csv"</span>,</span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    <span class="st">"partnership.csv"</span>,</span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="st">"junk.csv"</span>,</span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="st">"human_review.csv"</span>,</span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>]</span>
-<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>rng <span class="op">=</span> random.Random(<span class="dv">42</span>)</span>
-<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>split_records <span class="op">=</span> {<span class="st">"train"</span>: [], <span class="st">"validation"</span>: [], <span class="st">"test"</span>: []}</span>
-<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>seen <span class="op">=</span> {}</span>
-<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> label, filename <span class="kw">in</span> <span class="bu">enumerate</span>(source_files):</span>
-<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>    records <span class="op">=</span> []</span>
-<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> (notebook_dir <span class="op">/</span> <span class="st">"intentData"</span> <span class="op">/</span> filename).<span class="bu">open</span>(</span>
-<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>        newline<span class="op">=</span><span class="st">""</span>, encoding<span class="op">=</span><span class="st">"utf-8-sig"</span></span>
-<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>    ) <span class="im">as</span> <span class="bu">file</span>:</span>
-<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>        reader <span class="op">=</span> csv.DictReader(<span class="bu">file</span>)</span>
-<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">not</span> reader.fieldnames <span class="kw">or</span> <span class="st">"text"</span> <span class="kw">not</span> <span class="kw">in</span> reader.fieldnames:</span>
-<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>            <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="ss">f"</span><span class="sc">{</span>filename<span class="sc">}</span><span class="ss"> must contain a text column"</span>)</span>
-<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>        <span class="co"># DictReader already consumes the header.</span></span>
-<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> row <span class="kw">in</span> reader:</span>
-<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>            text <span class="op">=</span> row[<span class="st">"text"</span>].strip()</span>
-<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="kw">not</span> text:</span>
-<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>                <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="ss">f"Empty message in </span><span class="sc">{</span>filename<span class="sc">}</span><span class="ss">"</span>)</span>
-<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>            key <span class="op">=</span> <span class="st">" "</span>.join(text.casefold().split())</span>
-<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> key <span class="kw">in</span> seen:</span>
-<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> seen[key] <span class="op">!=</span> label:</span>
-<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">"The same message has conflicting category labels"</span>)</span>
-<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span></span>
-<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>            seen[key] <span class="op">=</span> label</span>
-<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>            <span class="co"># File order defines numeric labels consistently across all splits.</span></span>
-<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a>            records.append({<span class="st">"text"</span>: text, <span class="st">"label"</span>: label})</span>
-<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="bu">len</span>(records) <span class="op">&lt;</span> <span class="dv">10</span>:</span>
-<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a>        <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="ss">f"</span><span class="sc">{</span>filename<span class="sc">}</span><span class="ss"> needs at least 10 unique messages"</span>)</span>
-<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a>    rng.shuffle(records)</span>
-<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a>    train_end <span class="op">=</span> <span class="bu">int</span>(<span class="bu">len</span>(records) <span class="op">*</span> <span class="fl">0.8</span>)</span>
-<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a>    validation_end <span class="op">=</span> train_end <span class="op">+</span> <span class="bu">int</span>(<span class="bu">len</span>(records) <span class="op">*</span> <span class="fl">0.1</span>)</span>
-<span id="cb3-60"><a href="#cb3-60" aria-hidden="true" tabindex="-1"></a>    split_records[<span class="st">"train"</span>].extend(records[:train_end])</span>
-<span id="cb3-61"><a href="#cb3-61" aria-hidden="true" tabindex="-1"></a>    split_records[<span class="st">"validation"</span>].extend(records[train_end:validation_end])</span>
-<span id="cb3-62"><a href="#cb3-62" aria-hidden="true" tabindex="-1"></a>    split_records[<span class="st">"test"</span>].extend(records[validation_end:])</span>
-<span id="cb3-63"><a href="#cb3-63" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-64"><a href="#cb3-64" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> records <span class="kw">in</span> split_records.values():</span>
-<span id="cb3-65"><a href="#cb3-65" aria-hidden="true" tabindex="-1"></a>    rng.shuffle(records)</span>
-<span id="cb3-66"><a href="#cb3-66" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-67"><a href="#cb3-67" aria-hidden="true" tabindex="-1"></a>dataset_features <span class="op">=</span> Features({</span>
-<span id="cb3-68"><a href="#cb3-68" aria-hidden="true" tabindex="-1"></a>    <span class="st">"text"</span>: Value(<span class="st">"string"</span>),</span>
-<span id="cb3-69"><a href="#cb3-69" aria-hidden="true" tabindex="-1"></a>    <span class="st">"label"</span>: ClassLabel(names<span class="op">=</span>label_names),</span>
-<span id="cb3-70"><a href="#cb3-70" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb3-71"><a href="#cb3-71" aria-hidden="true" tabindex="-1"></a>dataset <span class="op">=</span> DatasetDict({</span>
-<span id="cb3-72"><a href="#cb3-72" aria-hidden="true" tabindex="-1"></a>    name: Dataset.from_list(records, features<span class="op">=</span>dataset_features)</span>
-<span id="cb3-73"><a href="#cb3-73" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> name, records <span class="kw">in</span> split_records.items()</span>
-<span id="cb3-74"><a href="#cb3-74" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb3-75"><a href="#cb3-75" aria-hidden="true" tabindex="-1"></a>data_dir.mkdir(parents<span class="op">=</span><span class="va">True</span>, exist_ok<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb3-76"><a href="#cb3-76" aria-hidden="true" tabindex="-1"></a>dataset.save_to_disk(<span class="bu">str</span>(data_dir <span class="op">/</span> <span class="st">"music_service_intents_labeled"</span>))</span>
-<span id="cb3-77"><a href="#cb3-77" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(dataset)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> csv</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> random</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> datasets <span class="im">import</span> ClassLabel, Dataset, DatasetDict, Features, Value, load_from_disk</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>notebook_dir <span class="op">=</span> Path.cwd()</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> (notebook_dir <span class="op">/</span> <span class="st">"intentData"</span>).is_dir():</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    notebook_dir <span class="op">=</span> notebook_dir <span class="op">/</span> <span class="st">"embeddings-and-search"</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>data_dir <span class="op">=</span> notebook_dir <span class="op">/</span> <span class="st">"data"</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>label_names <span class="op">=</span> [</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Recommendation_Request"</span>,</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Explanation_Request"</span>,</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Customer_Support"</span>,</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Partnership"</span>,</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Junk"</span>,</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Human_Review"</span>,</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>]</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>source_files <span class="op">=</span> [</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="st">"recommendation_request.csv"</span>,</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    <span class="st">"explanation_request.csv"</span>,</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    <span class="st">"customer_support.csv"</span>,</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    <span class="st">"partnership.csv"</span>,</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    <span class="st">"junk.csv"</span>,</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    <span class="st">"human_review.csv"</span>,</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>]</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>rng <span class="op">=</span> random.Random(<span class="dv">42</span>)</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>split_records <span class="op">=</span> {<span class="st">"train"</span>: [], <span class="st">"validation"</span>: [], <span class="st">"test"</span>: []}</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>seen <span class="op">=</span> {}</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> label, filename <span class="kw">in</span> <span class="bu">enumerate</span>(source_files):</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>    records <span class="op">=</span> []</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> (notebook_dir <span class="op">/</span> <span class="st">"intentData"</span> <span class="op">/</span> filename).<span class="bu">open</span>(</span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>        newline<span class="op">=</span><span class="st">""</span>, encoding<span class="op">=</span><span class="st">"utf-8-sig"</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>    ) <span class="im">as</span> <span class="bu">file</span>:</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>        reader <span class="op">=</span> csv.DictReader(<span class="bu">file</span>)</span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">not</span> reader.fieldnames <span class="kw">or</span> <span class="st">"text"</span> <span class="kw">not</span> <span class="kw">in</span> reader.fieldnames:</span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>            <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="ss">f"</span><span class="sc">{</span>filename<span class="sc">}</span><span class="ss"> must contain a text column"</span>)</span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>        <span class="co"># DictReader already consumes the header.</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> row <span class="kw">in</span> reader:</span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>            text <span class="op">=</span> row[<span class="st">"text"</span>].strip()</span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="kw">not</span> text:</span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a>                <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="ss">f"Empty message in </span><span class="sc">{</span>filename<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>            key <span class="op">=</span> <span class="st">" "</span>.join(text.casefold().split())</span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> key <span class="kw">in</span> seen:</span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> seen[key] <span class="op">!=</span> label:</span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">"The same message has conflicting category labels"</span>)</span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>            seen[key] <span class="op">=</span> label</span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>            <span class="co"># File order defines numeric labels consistently across all splits.</span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>            records.append({<span class="st">"text"</span>: text, <span class="st">"label"</span>: label})</span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="bu">len</span>(records) <span class="op">&lt;</span> <span class="dv">10</span>:</span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>        <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="ss">f"</span><span class="sc">{</span>filename<span class="sc">}</span><span class="ss"> needs at least 10 unique messages"</span>)</span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>    rng.shuffle(records)</span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>    train_end <span class="op">=</span> <span class="bu">int</span>(<span class="bu">len</span>(records) <span class="op">*</span> <span class="fl">0.8</span>)</span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>    validation_end <span class="op">=</span> train_end <span class="op">+</span> <span class="bu">int</span>(<span class="bu">len</span>(records) <span class="op">*</span> <span class="fl">0.1</span>)</span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>    split_records[<span class="st">"train"</span>].extend(records[:train_end])</span>
+<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a>    split_records[<span class="st">"validation"</span>].extend(records[train_end:validation_end])</span>
+<span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a>    split_records[<span class="st">"test"</span>].extend(records[validation_end:])</span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> records <span class="kw">in</span> split_records.values():</span>
+<span id="cb4-66"><a href="#cb4-66" aria-hidden="true" tabindex="-1"></a>    rng.shuffle(records)</span>
+<span id="cb4-67"><a href="#cb4-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-68"><a href="#cb4-68" aria-hidden="true" tabindex="-1"></a>dataset_features <span class="op">=</span> Features({</span>
+<span id="cb4-69"><a href="#cb4-69" aria-hidden="true" tabindex="-1"></a>    <span class="st">"text"</span>: Value(<span class="st">"string"</span>),</span>
+<span id="cb4-70"><a href="#cb4-70" aria-hidden="true" tabindex="-1"></a>    <span class="st">"label"</span>: ClassLabel(names<span class="op">=</span>label_names),</span>
+<span id="cb4-71"><a href="#cb4-71" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb4-72"><a href="#cb4-72" aria-hidden="true" tabindex="-1"></a>dataset <span class="op">=</span> DatasetDict({</span>
+<span id="cb4-73"><a href="#cb4-73" aria-hidden="true" tabindex="-1"></a>    name: Dataset.from_list(records, features<span class="op">=</span>dataset_features)</span>
+<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> name, records <span class="kw">in</span> split_records.items()</span>
+<span id="cb4-75"><a href="#cb4-75" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb4-76"><a href="#cb4-76" aria-hidden="true" tabindex="-1"></a>data_dir.mkdir(parents<span class="op">=</span><span class="va">True</span>, exist_ok<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-77"><a href="#cb4-77" aria-hidden="true" tabindex="-1"></a>dataset.save_to_disk(<span class="bu">str</span>(data_dir <span class="op">/</span> <span class="st">"music_service_intents_labeled"</span>))</span>
+<span id="cb4-78"><a href="#cb4-78" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(dataset)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="load-the-tokenizer-and-labelled-data" class="level3">
-<h3 class="anchored" data-anchor-id="load-the-tokenizer-and-labelled-data">Load the tokenizer and labelled data</h3>
-<p>The tokenizer supplies Qwen’s required conversation format; it does not train or run the model. Reloading the labelled dataset also checks that the first saved artifact can be read successfully.</p>
-<p>The system instruction defines the six valid outputs and sends unclear or equally plausible messages to <code>Human_Review</code>.</p>
-<div id="bb0fd73e" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> transformers <span class="im">import</span> AutoTokenizer</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<div id="67b53ff9" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>model_id <span class="op">=</span> <span class="st">"Qwen/Qwen2.5-0.5B-Instruct"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<div id="709705b6" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>tokenizer <span class="op">=</span> AutoTokenizer.from_pretrained(model_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
+<section id="reload-the-labelled-data" class="level3">
+<h3 class="anchored" data-anchor-id="reload-the-labelled-data">Reload the labelled data</h3>
+<p>Reloading the saved artifact checks that it can be read independently and recovers the category names from its <code>ClassLabel</code> schema. The system instruction defines the six valid outputs and sends unclear or equally plausible messages to <code>Human_Review</code>.</p>
 <div id="8fa2b9c8" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>dataset <span class="op">=</span> load_from_disk(<span class="bu">str</span>(data_dir <span class="op">/</span> <span class="st">"music_service_intents_labeled"</span>))</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>label_names <span class="op">=</span> dataset[<span class="st">"train"</span>].features[<span class="st">"label"</span>].names</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>dataset <span class="op">=</span> load_from_disk(<span class="bu">str</span>(data_dir <span class="op">/</span> <span class="st">"music_service_intents_labeled"</span>))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>label_names <span class="op">=</span> dataset[<span class="st">"train"</span>].features[<span class="st">"label"</span>].names</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="f1b3a07d" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>dataset</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>dataset</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="8d56488c" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>message_system <span class="op">=</span> <span class="st">"""</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="st">You route messages sent to a music service.</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="st">Classify each message as Recommendation_Request, Explanation_Request, Customer_Support, Partnership, Junk, or Human_Review.</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="st">Use Human_Review when the intent is unclear or more than one route is equally plausible.</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="st">Return only the category name, without an explanation.</span></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>.strip()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>message_system <span class="op">=</span> <span class="st">"""</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="st">You route messages sent to a music service.</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="st">Classify each message as Recommendation_Request, Explanation_Request, Customer_Support, Partnership, Junk, or Human_Review.</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="st">Use Human_Review when the intent is unclear or more than one route is equally plausible.</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="st">Return only the category name, without an explanation.</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>.strip()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="format-the-training-and-validation-examples" class="level3">
-<h3 class="anchored" data-anchor-id="format-the-training-and-validation-examples">Format the training and validation examples</h3>
-<p>Each record becomes a three-message conversation: a system instruction, the user’s message, and the correct category as the assistant response. Including the answer is appropriate here because these splits are used for learning and validation during training.</p>
+<section id="build-the-mlx-lm-training-and-validation-records" class="level3">
+<h3 class="anchored" data-anchor-id="build-the-mlx-lm-training-and-validation-records">Build the MLX-LM training and validation records</h3>
+<p>MLX-LM accepts chat data as one JSON object per line with a <code>messages</code> field. Each record contains a complete conversation: the system instruction, the user’s message, and the correct category as the assistant response.</p>
+<p>The records remain structured messages. MLX-LM applies Qwen’s chat template when it tokenizes them for training, so this notebook does not pre-render template text.</p>
 <div id="af51f9a3" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> convert_to_training_messages(dataset):</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a> messages <span class="op">=</span> [</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>   [</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    {</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"role"</span>: <span class="st">"system"</span>, </span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"content"</span>: message_system</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    },</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    {</span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"role"</span>: <span class="st">"user"</span>,</span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"content"</span>: <span class="ss">f"Classify: </span><span class="sc">{</span>ds[<span class="st">'text'</span>]<span class="sc">}</span><span class="ss">"</span></span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    },</span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    {</span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"role"</span>: <span class="st">"assistant"</span>,</span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>        <span class="st">"content"</span>: label_names[ds[<span class="st">"label"</span>]]</span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>   ] <span class="cf">for</span> ds <span class="kw">in</span> dataset</span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a> ]</span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a> texts <span class="op">=</span> [</span>
-<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>  tokenizer.apply_chat_template(message, tokenize<span class="op">=</span><span class="va">False</span>) </span>
-<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> message <span class="kw">in</span> messages</span>
-<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a> ]</span>
-<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a> <span class="cf">return</span> {<span class="st">"text"</span>: texts}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> convert_to_training_messages(dataset):</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> [</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>            <span class="st">"messages"</span>: [</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: message_system},</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                {</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"role"</span>: <span class="st">"user"</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"content"</span>: <span class="ss">f"Classify: </span><span class="sc">{</span>record[<span class="st">'text'</span>]<span class="sc">}</span><span class="ss">"</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>                },</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>                {</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"role"</span>: <span class="st">"assistant"</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"content"</span>: label_names[record[<span class="st">"label"</span>]],</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>                },</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>            ]</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> record <span class="kw">in</span> dataset</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="9b6204c5" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>ds_train <span class="op">=</span> convert_to_training_messages(dataset[<span class="st">"train"</span>])</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>ds_val <span class="op">=</span> convert_to_training_messages(dataset[<span class="st">"validation"</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>train_records <span class="op">=</span> convert_to_training_messages(dataset[<span class="st">"train"</span>])</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>validation_records <span class="op">=</span> convert_to_training_messages(dataset[<span class="st">"validation"</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="format-the-test-examples" class="level3">
-<h3 class="anchored" data-anchor-id="format-the-test-examples">Format the test examples</h3>
-<p>Test prompts include the system and user messages but omit the assistant answer. <code>add_generation_prompt=True</code> marks the point where Qwen should generate its prediction.</p>
-<p>The numeric label remains in a separate column so evaluation code can compare the prediction with the expected category without exposing that answer in the prompt.</p>
+<section id="build-the-ollama-evaluation-records" class="level3">
+<h3 class="anchored" data-anchor-id="build-the-ollama-evaluation-records">Build the Ollama evaluation records</h3>
+<p>Evaluation records contain only the system and user messages sent to Ollama. The expected category is stored in a separate <code>label</code> field, outside the conversation, so the model cannot see the answer.</p>
+<p>These records are for classification accuracy and error analysis. They are not supplied to MLX-LM during training or validation.</p>
 <div id="f9ec6a17" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> convert_to_prompting_messages(dataset):</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  texts <span class="op">=</span> []</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  labels <span class="op">=</span> []</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> ds <span class="kw">in</span> dataset:</span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    message <span class="op">=</span> [</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>      {</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"role"</span>: <span class="st">"system"</span>, </span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"content"</span>: message_system</span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>      },</span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>      {</span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>          <span class="st">"role"</span>: <span class="st">"user"</span>,</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>          <span class="st">"content"</span>: <span class="ss">f"Classify: </span><span class="sc">{</span>ds[<span class="st">'text'</span>]<span class="sc">}</span><span class="ss">"</span></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>      }</span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>    chat_message <span class="op">=</span> tokenizer.apply_chat_template(</span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>      message,</span>
-<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>      tokenize<span class="op">=</span><span class="va">False</span>,</span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>      add_generation_prompt<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    texts.append(chat_message)</span>
-<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>    labels.append(ds[<span class="st">"label"</span>])</span>
-<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {<span class="st">"text"</span>: texts, <span class="st">"label"</span>: labels}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> convert_to_evaluation_messages(dataset):</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> [</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>            <span class="st">"messages"</span>: [</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>                {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: message_system},</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>                {</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"role"</span>: <span class="st">"user"</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"content"</span>: <span class="ss">f"Classify: </span><span class="sc">{</span>record[<span class="st">'text'</span>]<span class="sc">}</span><span class="ss">"</span>,</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>                },</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>            ],</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>            <span class="st">"label"</span>: label_names[record[<span class="st">"label"</span>]],</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> record <span class="kw">in</span> dataset</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    ]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="dc4ac57d" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>ds_test <span class="op">=</span> convert_to_prompting_messages(dataset[<span class="st">"test"</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>evaluation_records <span class="op">=</span> convert_to_evaluation_messages(dataset[<span class="st">"test"</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="assemble-and-save-the-qwen-dataset" class="level3">
-<h3 class="anchored" data-anchor-id="assemble-and-save-the-qwen-dataset">Assemble and save the Qwen dataset</h3>
-<p>Convert the formatted dictionaries back into Hugging Face datasets, combine the three splits, and save the result. Training and validation contain formatted <code>text</code>; test contains formatted <code>text</code> plus a separate named <code>ClassLabel</code>.</p>
-<div id="761a197b" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>ds_train <span class="op">=</span> Dataset.from_dict(ds_train)</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>ds_val <span class="op">=</span> Dataset.from_dict(ds_val)</span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>test_features <span class="op">=</span> Features({</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"text"</span>: Value(<span class="st">"string"</span>),</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"label"</span>: ClassLabel(names<span class="op">=</span>label_names),</span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>ds_test <span class="op">=</span> Dataset.from_dict(ds_test, features<span class="op">=</span>test_features)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<div id="c8002b79" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>ds_combined <span class="op">=</span> DatasetDict({</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"train"</span>: ds_train,</span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"validation"</span>: ds_val,</span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"test"</span>: ds_test</span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
+<section id="export-the-local-training-files" class="level3">
+<h3 class="anchored" data-anchor-id="export-the-local-training-files">Export the local training files</h3>
+<p>Write one JSON object per line to <code>data/music_service_intents_mlx</code>. MLX-LM recognizes <code>train.jsonl</code> and <code>valid.jsonl</code> automatically. <code>evaluation.jsonl</code> is kept alongside them for the Ollama comparison but is not a training input.</p>
 <div id="bf43a23c" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>ds_combined.save_to_disk(<span class="bu">str</span>(data_dir <span class="op">/</span> <span class="st">"music_service_intents_qwen"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>mlx_data_dir <span class="op">=</span> data_dir <span class="op">/</span> <span class="st">"music_service_intents_mlx"</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>mlx_data_dir.mkdir(parents<span class="op">=</span><span class="va">True</span>, exist_ok<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> save_jsonl(path, records):</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> path.<span class="bu">open</span>(<span class="st">"w"</span>, encoding<span class="op">=</span><span class="st">"utf-8"</span>) <span class="im">as</span> <span class="bu">file</span>:</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> record <span class="kw">in</span> records:</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>            <span class="bu">file</span>.write(json.dumps(record, ensure_ascii<span class="op">=</span><span class="va">False</span>) <span class="op">+</span> <span class="st">"</span><span class="ch">\n</span><span class="st">"</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>jsonl_files <span class="op">=</span> {</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"train"</span>: mlx_data_dir <span class="op">/</span> <span class="st">"train.jsonl"</span>,</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"valid"</span>: mlx_data_dir <span class="op">/</span> <span class="st">"valid.jsonl"</span>,</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"evaluation"</span>: mlx_data_dir <span class="op">/</span> <span class="st">"evaluation.jsonl"</span>,</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>save_jsonl(jsonl_files[<span class="st">"train"</span>], train_records)</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>save_jsonl(jsonl_files[<span class="st">"valid"</span>], validation_records)</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>save_jsonl(jsonl_files[<span class="st">"evaluation"</span>], evaluation_records)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 </section>
 <section id="results" class="level2">
 <h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>Reload the final artifact to confirm that it was saved correctly. With the supplied twelve messages per category, the labelled dataset contains 72 unique messages:</p>
+<p>Reload the JSONL files to confirm that every line is valid and the saved counts match the prepared splits. With the supplied twelve messages per category, the dataset contains 72 unique messages:</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 28%">
+<col style="width: 28%">
+<col style="width: 21%">
+</colgroup>
 <thead>
 <tr class="header">
-<th>Split</th>
+<th>File</th>
 <th style="text-align: right;">Per intent</th>
 <th style="text-align: right;">Total</th>
 <th>Purpose</th>
@@ -475,35 +463,49 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td>Train</td>
+<td><code>train.jsonl</code></td>
 <td style="text-align: right;">9</td>
 <td style="text-align: right;">54</td>
-<td>Fine-tuning examples</td>
+<td>MLX-LM fine-tuning conversations</td>
 </tr>
 <tr class="even">
-<td>Validation</td>
+<td><code>valid.jsonl</code></td>
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">6</td>
-<td>Checks during training</td>
+<td>Validation loss during training</td>
 </tr>
 <tr class="odd">
-<td>Test</td>
+<td><code>evaluation.jsonl</code></td>
 <td style="text-align: right;">2</td>
 <td style="text-align: right;">12</td>
-<td>Unseen final evaluation</td>
+<td>Unseen Ollama classification evaluation</td>
 </tr>
 </tbody>
 </table>
-<p>Because the split is performed within each source file, every split contains all six intents in equal proportions.</p>
+<p>Because the split is performed within each source file, every file contains all six intents in equal proportions.</p>
 <div id="8d0a971a" class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>ds_llm <span class="op">=</span> load_from_disk(<span class="bu">str</span>(data_dir <span class="op">/</span> <span class="st">"music_service_intents_qwen"</span>))</span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>ds_llm</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> load_jsonl(path):</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> path.<span class="bu">open</span>(encoding<span class="op">=</span><span class="st">"utf-8"</span>) <span class="im">as</span> <span class="bu">file</span>:</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> [json.loads(line) <span class="cf">for</span> line <span class="kw">in</span> <span class="bu">file</span> <span class="cf">if</span> line.strip()]</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>saved_records <span class="op">=</span> {</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    name: load_jsonl(path)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> name, path <span class="kw">in</span> jsonl_files.items()</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, records <span class="kw">in</span> saved_records.items():</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>name<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span><span class="bu">len</span>(records)<span class="sc">}</span><span class="ss"> records"</span>)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"training_example"</span>: saved_records[<span class="st">"train"</span>][<span class="dv">0</span>],</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">"evaluation_example"</span>: saved_records[<span class="st">"evaluation"</span>][<span class="dv">0</span>],</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="analysis" class="level2">
 <h2 class="anchored" data-anchor-id="analysis">Analysis</h2>
-<p>The preparation meets the notebook’s structural goal: each intent is represented in every split, exact normalized duplicates cannot cross split boundaries, and the fixed seed makes the result reproducible. The test schema also keeps expected labels outside the model prompt.</p>
-<p>These checks establish dataset organization, not classifier quality. A complete evaluation still needs a prompting baseline, fine-tuning, predictions on the test set, and per-category error analysis.</p>
+<p>The preparation meets the notebook’s structural goal: each intent is represented in every split, exact normalized duplicates cannot cross split boundaries, and the fixed seed makes the result reproducible. <code>ClassLabel</code> preserves the category mapping in the labelled artifact, while the evaluation JSONL stores readable category names outside the model messages.</p>
+<p>These checks establish dataset organization, not classifier quality. A complete evaluation still needs an Ollama prompting baseline, MLX-LM fine-tuning, predictions on the unchanged evaluation records, and per-category error analysis.</p>
 </section>
 <section id="failure-cases" class="level2">
 <h2 class="anchored" data-anchor-id="failure-cases">Failure Cases</h2>
@@ -513,19 +515,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
-<p>The notebook produces two reusable artifacts. <code>music_service_intents_labeled</code> preserves cleaned messages and named labels, while <code>music_service_intents_qwen</code> stores chat-formatted training, validation, and test data. Both artifacts persist the label names wherever a label column is present.</p>
+<p>The notebook produces two reusable artifacts. <code>music_service_intents_labeled</code> preserves the cleaned messages, balanced splits, and named labels. <code>music_service_intents_mlx</code> contains MLX-LM chat files for training and validation plus separate evaluation conversations for Ollama.</p>
 <p>This preparation extends the song recommendation application with a routing dataset. It does not replace the recommender or the RAG explanation workflow; it prepares a classifier that can decide which workflow should handle a message.</p>
 </section>
 <section id="from-data-preparation-to-evaluation" class="level2">
 <h2 class="anchored" data-anchor-id="from-data-preparation-to-evaluation">From Data Preparation to Evaluation</h2>
-<p>The next stage asks a practical question: <strong>does fine-tuning classify these messages more reliably than prompting the original model?</strong> The prepared splits support four stages:</p>
+<p>The next stage asks a practical question: <strong>does local fine-tuning classify these messages more reliably than prompting the original model?</strong> The prepared files support four stages:</p>
 <ol type="1">
-<li><strong>Establish an Ollama baseline.</strong> Load raw messages from <code>music_service_intents_labeled["test"]</code>, construct separate <code>system</code> and <code>user</code> messages, and send them to Ollama’s chat API with <code>qwen2.5:0.5b-instruct</code>. Do not send the already rendered text from <code>music_service_intents_qwen</code> as a user message, because Ollama would apply its chat template again. Save each prediction rather than judging a few examples by eye.</li>
-<li><strong>Fine-tune the same model family.</strong> Train on the training split, use the validation split to monitor the run, and keep the test split completely unseen. Ollama is the local runtime; a separate training framework produces the model weights or adapter.</li>
-<li><strong>Run the fine-tuned model through Ollama.</strong> Export the result in a compatible model format, import it under a new Ollama model name, and quantize it to Q4_K_M to match the baseline build. Classify the same raw test messages with the same instructions and generation settings.</li>
-<li><strong>Compare the two approaches.</strong> Measure overall accuracy, per-category results, and the confusion matrix. Inspect every error, especially useful requests marked as junk, explanation requests sent away from the RAG workflow, and unclear messages that should have reached human review.</li>
+<li><strong>Establish an Ollama baseline.</strong> Send each <code>messages</code> list from <code>evaluation.jsonl</code> to Ollama using <code>qwen2.5:0.5b-instruct</code>. Save the returned category beside the separate expected <code>label</code>.</li>
+<li><strong>Fine-tune with MLX-LM.</strong> Run LoRA training with <code>Qwen/Qwen2.5-0.5B-Instruct</code> and <code>data/music_service_intents_mlx</code>. MLX-LM reads <code>train.jsonl</code> and <code>valid.jsonl</code>; <code>evaluation.jsonl</code> remains unseen.</li>
+<li><strong>Export and import the model.</strong> Fuse the learned adapter, export GGUF, create a new Ollama model, and quantize it to Q4_K_M to match the baseline build.</li>
+<li><strong>Compare the two Ollama models.</strong> Classify the same evaluation messages with the same system instruction and generation settings. Measure overall accuracy, per-category results, and the confusion matrix, then inspect every error.</li>
 </ol>
-<p>The comparison should use the unchanged test set for both models. If fine-tuning produces little improvement, the extra training and deployment complexity may not be justified. If it improves the important routing errors, the classifier can become the entry point to the application: <code>Recommendation_Request</code> goes to the recommender, <code>Explanation_Request</code> goes to the existing RAG explanation workflow, and the remaining labels go to their corresponding queues.</p>
+<p>If fine-tuning produces little improvement, the extra training and deployment complexity may not be justified. If it improves the important routing errors, the classifier can become the application entry point: <code>Recommendation_Request</code> goes to the recommender, <code>Explanation_Request</code> goes to the existing RAG workflow, and the remaining labels go to their corresponding queues.</p>
 
 
 </section>
