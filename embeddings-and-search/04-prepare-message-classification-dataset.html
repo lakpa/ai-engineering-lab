@@ -82,7 +82,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-a14d652b86e00f03abd5043129e363d4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-55617497126496852ff9f5a59253c640.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -175,6 +175,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#question" id="toc-question" class="nav-link active" data-scroll-target="#question">Question</a></li>
+  <li><a href="#what-this-notebook-covers" id="toc-what-this-notebook-covers" class="nav-link" data-scroll-target="#what-this-notebook-covers">What This Notebook Covers</a></li>
   <li><a href="#hypothesis" id="toc-hypothesis" class="nav-link" data-scroll-target="#hypothesis">Hypothesis</a></li>
   <li><a href="#environment-setup" id="toc-environment-setup" class="nav-link" data-scroll-target="#environment-setup">Environment Setup</a></li>
   <li><a href="#experiment" id="toc-experiment" class="nav-link" data-scroll-target="#experiment">Experiment</a>
@@ -189,7 +190,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#analysis" id="toc-analysis" class="nav-link" data-scroll-target="#analysis">Analysis</a></li>
   <li><a href="#failure-cases" id="toc-failure-cases" class="nav-link" data-scroll-target="#failure-cases">Failure Cases</a></li>
   <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
-  <li><a href="#from-data-preparation-to-evaluation" id="toc-from-data-preparation-to-evaluation" class="nav-link" data-scroll-target="#from-data-preparation-to-evaluation">From Data Preparation to Evaluation</a></li>
+  <li><a href="#what-comes-after-data-preparation" id="toc-what-comes-after-data-preparation" class="nav-link" data-scroll-target="#what-comes-after-data-preparation">What Comes After Data Preparation</a></li>
   </ul>
 </nav>
     </div>
@@ -241,6 +242,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Data preparation is the foundation of fine-tuning. A model can only learn the categories, boundaries, and mistakes represented in its training examples. Duplicate leakage, inconsistent labels, weak category definitions, or unrepresentative messages can make evaluation misleading and produce an unreliable classifier. For that reason, data preparation has its own notebook, where the dataset can be inspected and validated before any training begins.</p>
 <p>The classifier needs to distinguish six intents: recommendation requests, recommendation-explanation requests, customer support, partnerships, junk, and messages that need human review. An explanation request can be sent to the RAG workflow built in the previous notebook, while the other categories follow their own routes.</p>
 </section>
+<section id="what-this-notebook-covers" class="level2">
+<h2 class="anchored" data-anchor-id="what-this-notebook-covers">What This Notebook Covers</h2>
+<p>This notebook focuses only on preparing trustworthy data. It shows how to label messages, remove exact duplicates, create balanced splits, and save the records in the format needed for local training and evaluation.</p>
+<p>It does not train, convert, or deploy a model. Those steps introduce new ideas and are easier to understand after the data pipeline is working.</p>
+</section>
 <section id="hypothesis" class="level2">
 <h2 class="anchored" data-anchor-id="hypothesis">Hypothesis</h2>
 <p>If we define one source file per intent, remove exact duplicates before splitting, and split every intent separately, the resulting training, validation, and test sets should contain all six categories without exact-message leakage between splits.</p>
@@ -256,7 +262,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-r</span> requirements-mlx.txt</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Install Ollama separately and pull the corresponding quantized build used for the prompting baseline:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ollama</span> pull qwen2.5:0.5b-instruct</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>MLX-LM fine-tunes <code>Qwen/Qwen2.5-0.5B-Instruct</code> locally and applies the model’s chat template during training. Ollama runs the Q4_K_M baseline and the fine-tuned model after export; it does not perform the training step itself. This preparation notebook creates the files needed by both stages and does not load the model weights.</p>
+<p>MLX-LM will teach <code>Qwen/Qwen2.5-0.5B-Instruct</code> from the prepared examples. Ollama will run the original model for a baseline and later run the fine-tuned model. Ollama does not perform the training itself. This preparation notebook creates the files needed by both tools without loading the model weights.</p>
 </section>
 <section id="experiment" class="level2">
 <h2 class="anchored" data-anchor-id="experiment">Experiment</h2>
@@ -575,16 +581,16 @@ evaluation: 12 records</code></pre>
 <p>The notebook produces two reusable artifacts. <code>music_service_intents_labeled</code> preserves the cleaned messages, balanced splits, and named labels. <code>music_service_intents_mlx</code> contains MLX-LM chat files for training and validation plus separate evaluation conversations for Ollama.</p>
 <p>This preparation extends the song recommendation application with a routing dataset. It does not replace the recommender or the RAG explanation workflow; it prepares a classifier that can decide which workflow should handle a message.</p>
 </section>
-<section id="from-data-preparation-to-evaluation" class="level2">
-<h2 class="anchored" data-anchor-id="from-data-preparation-to-evaluation">From Data Preparation to Evaluation</h2>
-<p>The next stage asks a practical question: <strong>does local fine-tuning classify these messages more reliably than prompting the original model?</strong> The prepared files support four stages:</p>
+<section id="what-comes-after-data-preparation" class="level2">
+<h2 class="anchored" data-anchor-id="what-comes-after-data-preparation">What Comes After Data Preparation</h2>
+<p>The prepared files make it possible to ask a practical question: <strong>does local fine-tuning classify these messages more reliably than prompting the original model?</strong> The remaining learning path is:</p>
 <ol type="1">
-<li><strong>Establish an Ollama baseline.</strong> Send each <code>messages</code> list from <code>evaluation.jsonl</code> to Ollama using <code>qwen2.5:0.5b-instruct</code>. Save the returned category beside the separate expected <code>label</code>.</li>
-<li><strong>Fine-tune with MLX-LM.</strong> Run LoRA training with <code>Qwen/Qwen2.5-0.5B-Instruct</code> and <code>data/music_service_intents_mlx</code>. MLX-LM reads <code>train.jsonl</code> and <code>valid.jsonl</code>; <code>evaluation.jsonl</code> remains unseen.</li>
-<li><strong>Export and import the model.</strong> Fuse the learned adapter, export GGUF, create a new Ollama model, and quantize it to Q4_K_M to match the baseline build.</li>
-<li><strong>Compare the two Ollama models.</strong> Classify the same evaluation messages with the same system instruction and generation settings. Measure overall accuracy, per-category results, and the confusion matrix, then inspect every error.</li>
+<li><strong>Measure the starting point.</strong> Ask the original Qwen model in Ollama to classify the messages in <code>evaluation.jsonl</code> and save its answers. This is the baseline.</li>
+<li><strong>Fine-tune locally.</strong> Use MLX-LM to train Qwen with <code>train.jsonl</code> while checking progress with <code>valid.jsonl</code>. Prompt masking will make training focus on the assistant’s category answer rather than the repeated instructions.</li>
+<li><strong>Evaluate fairly.</strong> Run the fine-tuned model on the same evaluation messages and compare its answers with the hidden labels. Overall accuracy and the mistakes in each category will show whether training helped.</li>
+<li><strong>Learn deployment later.</strong> Model adapters, fusion, GGUF conversion, quantization, and Ollama import are separate deployment concepts. They can be introduced when the trained model is ready to run.</li>
 </ol>
-<p>If fine-tuning produces little improvement, the extra training and deployment complexity may not be justified. If it improves the important routing errors, the classifier can become the application entry point: <code>Recommendation_Request</code> goes to the recommender, <code>Explanation_Request</code> goes to the existing RAG workflow, and the remaining labels go to their corresponding queues.</p>
+<p>If fine-tuning produces little improvement, the extra work may not be justified. If it improves the important routing errors, the classifier can become the application entry point: <code>Recommendation_Request</code> goes to the recommender, <code>Explanation_Request</code> goes to the existing RAG workflow, and the remaining labels go to their corresponding queues.</p>
 
 
 </section>
