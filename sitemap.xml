@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://lakpa.github.io/ai-engineering-lab/embeddings-and-search/03-grounded-recommendation-explanations.html</loc>
-    <lastmod>2026-10-20T23:09:37.829Z</lastmod>
-  </url>
-  <url>
-    <loc>https://lakpa.github.io/ai-engineering-lab/embeddings-and-search/01-text-embeddings.html</loc>
-    <lastmod>2026-10-20T23:09:37.828Z</lastmod>
-  </url>
-  <url>
-    <loc>https://lakpa.github.io/ai-engineering-lab/index.html</loc>
-    <lastmod>2026-10-20T23:09:37.829Z</lastmod>
+    <loc>https://lakpa.github.io/ai-engineering-lab/embeddings-and-search/04-prepare-message-classification-dataset.html</loc>
+    <lastmod>2026-10-27T16:18:52.772Z</lastmod>
   </url>
   <url>
     <loc>https://lakpa.github.io/ai-engineering-lab/embeddings-and-search/02-content-based-recommender.html</loc>
-    <lastmod>2026-10-20T23:09:37.829Z</lastmod>
+    <lastmod>2026-10-27T16:18:52.772Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lakpa.github.io/ai-engineering-lab/index.html</loc>
+    <lastmod>2026-10-27T16:18:52.773Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lakpa.github.io/ai-engineering-lab/embeddings-and-search/01-text-embeddings.html</loc>
+    <lastmod>2026-10-27T16:18:52.772Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lakpa.github.io/ai-engineering-lab/embeddings-and-search/03-grounded-recommendation-explanations.html</loc>
+    <lastmod>2026-10-27T16:18:52.772Z</lastmod>
   </url>
 </urlset>
