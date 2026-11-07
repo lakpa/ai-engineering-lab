@@ -84,3 +84,20 @@ quarto render
 Quarto uses the notebooks' saved outputs by default, so building the site does not require rerunning GPU inference or downloading model weights. Rerun notebooks in their appropriate environments when code or data changes, then save them before rendering. Generated HTML is written to `_site/`.
 
 The [publishing workflow](.github/workflows/quarto-publish.yml) renders the site on pushes to `main` and publishes it to the `gh-pages` branch. GitHub Pages must be configured to deploy from that branch, and Actions needs permission to write repository contents. See [Quarto's GitHub Pages instructions](https://quarto.org/docs/publishing/github-pages.html).
+
+## Check documentation changes
+
+Pull requests run notebook-format validation, README link checks, a Quarto build using saved outputs, and checks for local page and asset targets in the published HTML. These checks do not execute notebooks or download models. External URLs and fragment anchors are not checked.
+
+To run the same checks locally, use a small documentation-only environment with Python 3.11 and Quarto 1.10.18:
+
+```sh
+python3.11 -m venv /tmp/ai-lab-docs-checks
+/tmp/ai-lab-docs-checks/bin/python -m pip install -r requirements-checks.txt
+/tmp/ai-lab-docs-checks/bin/python -m unittest discover -s tests -v
+/tmp/ai-lab-docs-checks/bin/python scripts/check_docs.py
+quarto render --no-execute
+/tmp/ai-lab-docs-checks/bin/python scripts/check_docs.py --site _site
+```
+
+Checks cover the sources listed in `_quarto.yml`; unpublished drafts are excluded. Notebook execution and model-quality evaluation remain separate manual steps. The pull-request workflow validates changes without publishing the site.
