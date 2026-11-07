@@ -14,5 +14,6 @@ I use small, reproducible experiments to understand embeddings, search, and retr
 ## Classification and fine-tuning
 
 - [Preparing an Intent-Classification Dataset](embeddings-and-search/04-prepare-message-classification-dataset.ipynb) builds, validates, splits, and formats music-service messages for classification and later fine-tuning.
+- [Classifying Messages Locally with a Small Language Model](embeddings-and-search/05-message-classification-inference.ipynb) compares Qwen inference with MLX-LM and PyTorch MPS on an Apple Silicon Mac, examines classification errors and response times, and establishes a baseline for fine tuning.
 
 The [source notebooks and song dataset](https://github.com/lakpa/ai-engineering-lab/tree/main/embeddings-and-search) are available in the repository.
