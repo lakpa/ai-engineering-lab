@@ -1,0 +1,35 @@
+name: Check notebooks and site
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-checks.txt
+      - name: Install documentation check dependencies
+        run: python -m pip install -r requirements-checks.txt
+      - name: Test documentation checks
+        run: python -m unittest discover -s tests -v
+      - name: Validate source notebooks and README links
+        run: python scripts/check_docs.py
+      - uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: '1.10.18'
+      - name: Render saved notebook outputs
+        run: quarto render --no-execute
+      - name: Check published page and asset links
+        run: python scripts/check_docs.py --site _site
