@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.11.9">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-11-03">
+<meta name="description" content="Compare Qwen2.5-0.5B-Instruct with MLX-LM and PyTorch MPS, then use the results as a baseline for fine tuning.">
+
+<title>Classifying Messages Locally with a Small Language Model – AI Engineering Lab</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-b0bacdaee50ff9abb97ae013f25660d1.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+</head>
+
+<body class="nav-fixed quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark" aria-label="Site">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">AI Engineering Lab</span>
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../embeddings-and-search/01-text-embeddings.html"> 
+<span class="menu-text">Text Embeddings</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../embeddings-and-search/02-content-based-recommender.html"> 
+<span class="menu-text">Song Recommender</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../embeddings-and-search/03-grounded-recommendation-explanations.html"> 
+<span class="menu-text">Understanding RAG</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../embeddings-and-search/04-prepare-message-classification-dataset.html"> 
+<span class="menu-text">Preparing Classification Data</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link active" href="../embeddings-and-search/05-message-classification-inference.html" aria-current="page"> 
+<span class="menu-text">Local Message Classification</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/lakpa/ai-engineering-lab"> <i class="bi bi-github" role="img" aria-label="GitHub repository">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+            <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" aria-labelledby="toc-title" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#continuing-the-learning-journey" id="toc-continuing-the-learning-journey" class="nav-link active" data-scroll-target="#continuing-the-learning-journey">Continuing the learning journey</a></li>
+  <li><a href="#the-question" id="toc-the-question" class="nav-link" data-scroll-target="#the-question">The question</a></li>
+  <li><a href="#why-use-both-workflows" id="toc-why-use-both-workflows" class="nav-link" data-scroll-target="#why-use-both-workflows">Why use both workflows?</a></li>
+  <li><a href="#what-inference-means-in-this-lesson" id="toc-what-inference-means-in-this-lesson" class="nav-link" data-scroll-target="#what-inference-means-in-this-lesson">What inference means in this lesson</a></li>
+  <li><a href="#keep-the-comparison-consistent" id="toc-keep-the-comparison-consistent" class="nav-link" data-scroll-target="#keep-the-comparison-consistent">Keep the comparison consistent</a></li>
+  <li><a href="#prepare-the-environment" id="toc-prepare-the-environment" class="nav-link" data-scroll-target="#prepare-the-environment">Prepare the environment</a></li>
+  <li><a href="#step-1-inspect-an-evaluation-example" id="toc-step-1-inspect-an-evaluation-example" class="nav-link" data-scroll-target="#step-1-inspect-an-evaluation-example">Step 1: Inspect an evaluation example</a>
+  <ul class="collapse">
+  <li><a href="#understand-what-we-have-loaded" id="toc-understand-what-we-have-loaded" class="nav-link" data-scroll-target="#understand-what-we-have-loaded">Understand what we have loaded</a></li>
+  </ul></li>
+  <li><a href="#step-2-prepare-the-model-input" id="toc-step-2-prepare-the-model-input" class="nav-link" data-scroll-target="#step-2-prepare-the-model-input">Step 2: Prepare the model input</a>
+  <ul class="collapse">
+  <li><a href="#read-the-formatted-conversation" id="toc-read-the-formatted-conversation" class="nav-link" data-scroll-target="#read-the-formatted-conversation">Read the formatted conversation</a></li>
+  </ul></li>
+  <li><a href="#step-3-choose-how-the-model-generates-answers" id="toc-step-3-choose-how-the-model-generates-answers" class="nav-link" data-scroll-target="#step-3-choose-how-the-model-generates-answers">Step 3: Choose how the model generates answers</a>
+  <ul class="collapse">
+  <li><a href="#how-greedy-decoding-builds-an-answer" id="toc-how-greedy-decoding-builds-an-answer" class="nav-link" data-scroll-target="#how-greedy-decoding-builds-an-answer">How greedy decoding builds an answer</a></li>
+  <li><a href="#why-we-use-it-here" id="toc-why-we-use-it-here" class="nav-link" data-scroll-target="#why-we-use-it-here">Why we use it here</a></li>
+  <li><a href="#shared-setup" id="toc-shared-setup" class="nav-link" data-scroll-target="#shared-setup">Shared setup</a></li>
+  </ul></li>
+  <li><a href="#step-4-evaluate-all-12-messages" id="toc-step-4-evaluate-all-12-messages" class="nav-link" data-scroll-target="#step-4-evaluate-all-12-messages">Step 4: Evaluate all 12 messages</a>
+  <ul class="collapse">
+  <li><a href="#shared-evaluation-behavior" id="toc-shared-evaluation-behavior" class="nav-link" data-scroll-target="#shared-evaluation-behavior">Shared evaluation behavior</a></li>
+  <li><a href="#run-the-mlx-lm-evaluation" id="toc-run-the-mlx-lm-evaluation" class="nav-link" data-scroll-target="#run-the-mlx-lm-evaluation">Run the MLX-LM evaluation</a></li>
+  <li><a href="#run-the-pytorch-mps-evaluation" id="toc-run-the-pytorch-mps-evaluation" class="nav-link" data-scroll-target="#run-the-pytorch-mps-evaluation">Run the PyTorch MPS evaluation</a></li>
+  </ul></li>
+  <li><a href="#step-5-read-the-comparison" id="toc-step-5-read-the-comparison" class="nav-link" data-scroll-target="#step-5-read-the-comparison">Step 5: Read the comparison</a></li>
+  <li><a href="#what-we-learned-and-what-comes-next" id="toc-what-we-learned-and-what-comes-next" class="nav-link" data-scroll-target="#what-we-learned-and-what-comes-next">What we learned and what comes next</a>
+  <ul class="collapse">
+  <li><a href="#why-fine-tuning-is-the-next-step" id="toc-why-fine-tuning-is-the-next-step" class="nav-link" data-scroll-target="#why-fine-tuning-is-the-next-step">Why fine tuning is the next step</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content" tabindex="-1">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Classifying Messages Locally with a Small Language Model</h1>
+<p class="subtitle lead">Comparing MLX-LM and PyTorch MPS before fine tuning</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">inference</div>
+    <div class="quarto-category">classification</div>
+    <div class="quarto-category">small-language-models</div>
+    <div class="quarto-category">mlx</div>
+    <div class="quarto-category">pytorch</div>
+    <div class="quarto-category">mps</div>
+    <div class="quarto-category">qwen</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    Compare Qwen2.5-0.5B-Instruct with MLX-LM and PyTorch MPS, then use the results as a baseline for fine tuning.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">November 3, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="continuing-the-learning-journey" class="level2">
+<h2 class="anchored" data-anchor-id="continuing-the-learning-journey">Continuing the learning journey</h2>
+<p>In <a href="../embeddings-and-search/04-prepare-message-classification-dataset.html">notebook 04</a>, we prepared labelled music-service messages for training and evaluation. Here we use the 12 evaluation examples to establish the baseline for <a href="06-message-classification-fine-tuning.ipynb">notebook 06</a>.</p>
+<p><strong>Reading guide:</strong> follow the explanations and short examples first. Supporting checks and reporting code are folded where the viewer supports it. Run every code cell in order, including folded cells; understanding every implementation detail is optional.</p>
+</section>
+<section id="the-question" class="level2">
+<h2 class="anchored" data-anchor-id="the-question">The question</h2>
+<p><strong>How do MLX-LM and PyTorch MPS compare when the same Qwen model classifies the same messages?</strong></p>
+<p>We will compare prediction quality and timing, then inspect the mistakes to understand what needs improvement.</p>
+</section>
+<section id="why-use-both-workflows" class="level2">
+<h2 class="anchored" data-anchor-id="why-use-both-workflows">Why use both workflows?</h2>
+<p>MLX-LM connects the data format introduced in notebook 04 to actual predictions. PyTorch introduces our chosen fine-tuning workflow. Comparing them shows how the same classification task carries across frameworks.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Workflow</th>
+<th>How it runs the model</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>MLX-LM with MLX</td>
+<td>MLX-LM loads the language model and manages generation, while MLX performs the numerical computation.</td>
+</tr>
+<tr class="even">
+<td>Transformers with PyTorch MPS</td>
+<td>Transformers loads the language model and manages generation, while PyTorch uses its MPS backend to compute on the Mac GPU.</td>
+</tr>
+</tbody>
+</table>
+<p>A <strong>backend</strong> carries out computation on particular hardware. MLX-LM is a language-model package, whereas MPS is a PyTorch backend, so we compare complete inference workflows rather than equivalent software components.</p>
+<p>Timing results do not determine our fine-tuning framework. Run both workflows because the comparison cells need both sets of results.</p>
+<p><strong>Where does the model run?</strong> Both workflows load Qwen into the notebook’s Python process. Files come from Hugging Face and are cached on your Mac; generation then runs locally. No Ollama service or HTTP model server is needed. VS Code is the editor in which we run the notebook.</p>
+<p>Sources: <a href="https://github.com/ml-explore/mlx-lm">MLX-LM</a> and <a href="https://docs.pytorch.org/docs/stable/notes/mps.html">PyTorch MPS</a>.</p>
+</section>
+<section id="what-inference-means-in-this-lesson" class="level2">
+<h2 class="anchored" data-anchor-id="what-inference-means-in-this-lesson">What inference means in this lesson</h2>
+<p><strong>Inference means using a trained model to make a prediction.</strong> We use <a href="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct">Qwen2.5-0.5B-Instruct</a>, a small language model with about half a billion parameters. Both frameworks run this same model.</p>
+<p>The <code>Instruct</code> checkpoint has already been trained to follow instructions. Here, “original model” means that checkpoint before any additional training on our music service dataset. It receives a message and generates the category that should handle it.</p>
+<pre class="text"><code>Message: Can you recommend something similar to this song?
+Expected category: Recommendation_Request</code></pre>
+<p>The six possible categories are <code>Recommendation_Request</code>, <code>Explanation_Request</code>, <code>Customer_Support</code>, <code>Partnership</code>, <code>Junk</code>, and <code>Human_Review</code>.</p>
+<p>To obtain a prediction, we format the conversation, convert it into tokens, and pass those tokens through the model. The model generates its answer one token at a time, and we convert the output back into text. We then compare that text with the expected category.</p>
+<p>The model’s learned weights stay unchanged throughout this process. <strong>Inference uses those weights, evaluation checks the predictions, and fine tuning changes the weights through additional training.</strong> Our evaluation of the unchanged model becomes the classification baseline.</p>
+</section>
+<section id="keep-the-comparison-consistent" class="level2">
+<h2 class="anchored" data-anchor-id="keep-the-comparison-consistent">Keep the comparison consistent</h2>
+<p>Both workflows use the same Qwen revision, messages, instructions, input token IDs, and generation settings. In this experiment, both store the weights as <strong>bfloat16</strong>, a numerical format that uses 16 bits per value. We process one message at a time and release each model before loading the other.</p>
+<p>We compare:</p>
+<ul>
+<li><strong>Accuracy:</strong> the percentage of messages assigned the correct category.</li>
+<li><strong>Agreement:</strong> how often both workflows return the same category.</li>
+<li><strong>Median latency:</strong> the middle request duration across repeated measurements.</li>
+<li><strong>Model loading time:</strong> how long it takes to load each model from the local files, measured separately from request latency.</li>
+</ul>
+<p>Two workflows can agree and still be wrong, so we will also inspect their mistakes.</p>
+</section>
+<section id="prepare-the-environment" class="level2">
+<h2 class="anchored" data-anchor-id="prepare-the-environment">Prepare the environment</h2>
+<p><strong>Platform scope:</strong> this notebook runs as written on an Apple Silicon Mac because it compares MLX-LM with PyTorch’s MPS backend. The dataset, prompts, tokenization, and scoring approach also apply to other machines. On Windows or Linux, the PyTorch path could be adapted to use CUDA on a supported NVIDIA GPU or to run on the CPU. Device selection, timing, and memory cleanup would need corresponding changes. That would be a different runtime comparison, so the Mac timings reported here would not carry over.</p>
+<p>This notebook uses a separate Python environment because the pinned MLX-LM version requires Transformers 5, while <code>sentence-transformers==5.1.2</code> in the earlier lessons requires Transformers below version 5.</p>
+<p>From the repository root, run:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3.11</span> <span class="at">-m</span> venv .venv-inference</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> .venv-inference/bin/activate</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-r</span> requirements-mlx.txt torch==2.14.1 transformers==5.22.1 nbformat==5.10.4 ipykernel==6.29.4</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Select <code>.venv-inference/bin/python</code> as the notebook environment, restart the kernel, and run the cells in order on an Apple Silicon Mac. Continue using <code>.venv</code> for the earlier embedding lessons.</p>
+<p>The first run may download model files. Predictions run locally. Save the notebook after execution to retain its comparison outputs as the baseline for the next lesson. Pause other model workloads before collecting timings to reduce competition for the GPU.</p>
+</section>
+<section id="step-1-inspect-an-evaluation-example" class="level2">
+<h2 class="anchored" data-anchor-id="step-1-inspect-an-evaluation-example">Step 1: Inspect an evaluation example</h2>
+<p>We begin with <code>evaluation.jsonl</code> from notebook 04. Each record contains a conversation in <code>messages</code> and its expected answer in <code>label</code>.</p>
+<p>The conversation has a system message explaining the task and a user message containing the text to classify. We send only these messages to the model and keep the expected answer separate for scoring. Including the answer in the conversation would give it away.</p>
+<p>The next cell loads all 12 records into <code>evaluation_records</code>, a Python list of dictionaries, then selects the first with <code>[0]</code>. Selecting one example does not discard the others. The cell works from either the repository root or the notebook directory and does not load a model.</p>
+<p>The records have this structure, with the instruction shortened for display:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>evaluation_records <span class="op">=</span> [</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        <span class="st">"messages"</span>: [</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>            {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: <span class="st">"You route messages sent to a music service..."</span>},</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>            {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: <span class="st">"Classify: Can you recommend music similar to my favourites?"</span>},</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        ],</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"label"</span>: <span class="st">"Recommendation_Request"</span>,</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    },</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># The remaining evaluation records follow the same structure.</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="load-evaluation" class="cell" data-execution_count="34">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>notebook_dir <span class="op">=</span> Path.cwd()</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> (notebook_dir <span class="op">/</span> <span class="st">"data/music_service_intents_mlx/evaluation.jsonl"</span>).is_file():</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    notebook_dir <span class="op">=</span> notebook_dir <span class="op">/</span> <span class="st">"embeddings-and-search"</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>evaluation_path <span class="op">=</span> notebook_dir <span class="op">/</span> <span class="st">"data/music_service_intents_mlx/evaluation.jsonl"</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> evaluation_path.is_file():</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">FileNotFoundError</span>(<span class="st">"Run notebook 04 first, then open this notebook from its folder or the repository root."</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> evaluation_path.<span class="bu">open</span>(encoding<span class="op">=</span><span class="st">"utf-8"</span>) <span class="im">as</span> <span class="bu">file</span>:</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    evaluation_records <span class="op">=</span> [json.loads(line) <span class="cf">for</span> line <span class="kw">in</span> <span class="bu">file</span> <span class="cf">if</span> line.strip()]</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> evaluation_records:</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">"The evaluation file contains no examples."</span>)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>example <span class="op">=</span> evaluation_records[<span class="dv">0</span>]</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>model_messages <span class="op">=</span> example[<span class="st">"messages"</span>]</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>expected_label <span class="op">=</span> example[<span class="st">"label"</span>]</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Loaded </span><span class="sc">{</span><span class="bu">len</span>(evaluation_records)<span class="sc">}</span><span class="ss"> evaluation examples."</span>)</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">What the model will see:"</span>)</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> message <span class="kw">in</span> model_messages:</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>message[<span class="st">'role'</span>]<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>message[<span class="st">'content'</span>]<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="ss">Expected answer (kept outside the model input): </span><span class="sc">{</span>expected_label<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Loaded 12 evaluation examples.
+
+What the model will see:
+system: You route messages sent to a music service.
+Classify each message as Recommendation_Request, Explanation_Request, Customer_Support, Partnership, Junk, or Human_Review.
+Use Human_Review when the intent is unclear or more than one route is equally plausible.
+Return only the category name, without an explanation.
+user: Classify: Can you recommend music similar to the tracks in my favourites?
+
+Expected answer (kept outside the model input): Recommendation_Request</code></pre>
+</div>
+</div>
+<section id="understand-what-we-have-loaded" class="level3">
+<h3 class="anchored" data-anchor-id="understand-what-we-have-loaded">Understand what we have loaded</h3>
+<p>The output shows the <strong>input</strong> that the model will receive and the <strong>expected label</strong> that we will use to check its answer. The <strong>prediction</strong> does not exist yet because we have not run inference.</p>
+<p>Before continuing, read the user message and choose a category yourself. Then compare it with the expected label and check that <code>model_messages</code> contains only the system and user messages.</p>
+<p>We now have a conversation, but Qwen needs a sequence of token IDs to process it.</p>
+</section>
+</section>
+<section id="step-2-prepare-the-model-input" class="level2">
+<h2 class="anchored" data-anchor-id="step-2-prepare-the-model-input">Step 2: Prepare the model input</h2>
+<p>Preparing the input involves two operations: formatting the conversation and converting the formatted text into token IDs.</p>
+<p>A <strong>chat template</strong> adds markers that identify the speaker and the boundaries between messages. We use Qwen’s own template so the conversation follows the format it learned during training.</p>
+<p>A <strong>tokenizer</strong> splits that text into tokens and looks up their integer IDs in a vocabulary. A token may represent a word, part of a word, punctuation, or a special marker. The ID identifies a vocabulary entry; later, the model uses it to look up an embedding vector.</p>
+<p>The cell below loads Qwen’s tokenizer and pins its revision so both workflows use the same version. We first display the formatted conversation, then request its token IDs with <code>tokenize=True</code>. Setting <code>return_dict=False</code> gives us a plain Python list, while <code>add_generation_prompt=True</code> adds the start of the assistant’s turn.</p>
+<p>Although <code>AutoTokenizer</code> comes from Transformers, this step does not run PyTorch inference. The prepared IDs will be passed directly to both workflows.</p>
+<p>Reference: <a href="https://huggingface.co/docs/transformers/chat_templating">Hugging Face chat templates</a>.</p>
+<p><strong>What is a model revision?</strong> The model ID identifies its repository, while the revision identifies a particular version of the files, like a Git commit. Pinning it ensures that both workflows load the same weights and tokenizer even if the repository is updated later.</p>
+<div id="ed32dea9" class="cell" data-execution_count="35">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> transformers <span class="im">import</span> AutoTokenizer</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>MODEL_ID <span class="op">=</span> <span class="st">"Qwen/Qwen2.5-0.5B-Instruct"</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>MODEL_REVISION <span class="op">=</span> <span class="st">"7ae557604adf67be50417f59c2c2f167def9a775"</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>tokenizer <span class="op">=</span> AutoTokenizer.from_pretrained(MODEL_ID, revision<span class="op">=</span>MODEL_REVISION)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>formatted_prompt <span class="op">=</span> tokenizer.apply_chat_template(</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    model_messages, tokenize<span class="op">=</span><span class="va">False</span>, add_generation_prompt<span class="op">=</span><span class="va">True</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>input_ids <span class="op">=</span> tokenizer.apply_chat_template(</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    model_messages, tokenize<span class="op">=</span><span class="va">True</span>, add_generation_prompt<span class="op">=</span><span class="va">True</span>, return_dict<span class="op">=</span><span class="va">False</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Formatted conversation:"</span>)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(formatted_prompt)</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Input token count: </span><span class="sc">{</span><span class="bu">len</span>(input_ids)<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Formatted conversation:
+&lt;|im_start|&gt;system
+You route messages sent to a music service.
+Classify each message as Recommendation_Request, Explanation_Request, Customer_Support, Partnership, Junk, or Human_Review.
+Use Human_Review when the intent is unclear or more than one route is equally plausible.
+Return only the category name, without an explanation.&lt;|im_end|&gt;
+&lt;|im_start|&gt;user
+Classify: Can you recommend music similar to the tracks in my favourites?&lt;|im_end|&gt;
+&lt;|im_start|&gt;assistant
+
+Input token count: 89</code></pre>
+</div>
+</div>
+<section id="read-the-formatted-conversation" class="level3">
+<h3 class="anchored" data-anchor-id="read-the-formatted-conversation">Read the formatted conversation</h3>
+<p><code>&lt;|im_start|&gt;</code> marks the beginning of a message, and <code>&lt;|im_end|&gt;</code> marks its end. The text following the start marker identifies the speaker. At the bottom, the assistant header marks where the model should begin its answer.</p>
+<p>The token count includes the instructions, user message, and conversation markers.</p>
+<p><strong>Try it:</strong> set <code>add_generation_prompt=False</code> in both calls and inspect what disappears. This changes where the model is expected to continue, rather than choosing a category for it. Restore <code>True</code> before running the remaining cells.</p>
+<p>With the input format understood, we can choose the generation settings and prepare the full evaluation.</p>
+</section>
+</section>
+<section id="step-3-choose-how-the-model-generates-answers" class="level2">
+<h2 class="anchored" data-anchor-id="step-3-choose-how-the-model-generates-answers">Step 3: Choose how the model generates answers</h2>
+<p>The input is ready, so we can load the model’s <strong>weights</strong>, which are the numerical values learned during training. Before running it, we need to choose how it will select the tokens that form its answer.</p>
+<section id="how-greedy-decoding-builds-an-answer" class="level3">
+<h3 class="anchored" data-anchor-id="how-greedy-decoding-builds-an-answer">How greedy decoding builds an answer</h3>
+<p>A language model builds its answer one token at a time. At each step, it assigns a probability to every possible next token, based on the input and the tokens it has already generated. <strong>Decoding is the strategy used to choose which token comes next.</strong></p>
+<p>With <strong>greedy decoding</strong>, the model always chooses the token with the highest probability at that step. It is called greedy because it takes the best available choice immediately, without looking ahead to compare complete answers.</p>
+<p>Imagine the model assigns these probabilities to the next token:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Possible next token</th>
+<th style="text-align: right;">Illustrative probability</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Recommendation</code></td>
+<td style="text-align: right;">60%</td>
+</tr>
+<tr class="even">
+<td><code>Human</code></td>
+<td style="text-align: right;">30%</td>
+</tr>
+<tr class="odd">
+<td>All other tokens combined</td>
+<td style="text-align: right;">10%</td>
+</tr>
+</tbody>
+</table>
+<p>Greedy decoding chooses <code>Recommendation</code>. With that token added to the answer, the model calculates the probabilities again and chooses the next token, which might be <code>_Request</code>. This process continues until the model produces a stopping token or reaches the output limit.</p>
+<p>These numbers are an illustration rather than measurements from our experiment. They represent probabilities for the next token, so 60% for <code>Recommendation</code> does not mean the model is 60% confident that the complete category is correct.</p>
+</section>
+<section id="why-we-use-it-here" class="level3">
+<h3 class="anchored" data-anchor-id="why-we-use-it-here">Why we use it here</h3>
+<p>We want to compare MLX-LM and PyTorch MPS under similar conditions. Random sampling can select different tokens across repeated requests, so we use greedy decoding to remove that source of variation.</p>
+<p>The two frameworks express this choice differently:</p>
+<ul>
+<li>MLX-LM uses <code>make_sampler(temp=0.0)</code>.</li>
+<li>PyTorch uses <code>do_sample=False</code> with <code>num_beams=1</code>.</li>
+</ul>
+<p>Both settings select the most probable next token, although numerical differences between the backends can still lead to different predictions. Making the most likely choice at every step also does not guarantee the correct category or the most likely complete answer.</p>
+<p>Finally, distinguish this selection process from the tokenizer’s <code>decode()</code> method. <strong>Greedy decoding chooses the output tokens; <code>tokenizer.decode()</code> converts their IDs into readable text.</strong></p>
+</section>
+<section id="shared-setup" class="level3">
+<h3 class="anchored" data-anchor-id="shared-setup">Shared setup</h3>
+<p>The next cell prepares the settings and downloads the pinned checkpoint if needed, which requires roughly 1 GB of storage. Both backends will use these same local files and a limit of 32 new tokens per answer.</p>
+<p>Reference: <a href="https://github.com/ml-explore/mlx-lm#python-api">MLX-LM Python API</a>.</p>
+<div id="16b7a354" class="cell" data-execution_count="36">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> importlib.metadata <span class="im">import</span> version</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> time <span class="im">import</span> perf_counter</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> huggingface_hub <span class="im">import</span> snapshot_download</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>MAX_NEW_TOKENS <span class="op">=</span> <span class="dv">32</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>valid_labels <span class="op">=</span> {</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Recommendation_Request"</span>, <span class="st">"Explanation_Request"</span>, <span class="st">"Customer_Support"</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Partnership"</span>, <span class="st">"Junk"</span>, <span class="st">"Human_Review"</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Fetch files before timing either model load.</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>model_path <span class="op">=</span> snapshot_download(</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    MODEL_ID, revision<span class="op">=</span>MODEL_REVISION,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>    allow_patterns<span class="op">=</span>[<span class="st">"*.json"</span>, <span class="st">"*.safetensors"</span>, <span class="st">"*.txt"</span>, <span class="st">"*.model"</span>, <span class="st">"*.jinja"</span>],</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Model revision:"</span>, MODEL_REVISION)</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Maximum new tokens per answer:"</span>, MAX_NEW_TOKENS)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Fetching 7 files: 100%|██████████| 7/7 [00:00&lt;00:00, 3325.42it/s]</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Model revision: 7ae557604adf67be50417f59c2c2f167def9a775
+Maximum new tokens per answer: 32</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code></code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="step-4-evaluate-all-12-messages" class="level2">
+<h2 class="anchored" data-anchor-id="step-4-evaluate-all-12-messages">Step 4: Evaluate all 12 messages</h2>
+<p>Both backends use one shared evaluator, <code>evaluate_backend()</code>, so their predictions are scored and timed in the same way:</p>
+<ol type="1">
+<li>Run one <strong>warm up</strong> request before timing to reduce the influence of first-use setup.</li>
+<li>Loop over all 12 messages, generating and scoring one answer at a time.</li>
+<li>Repeat the loop three times to observe timing variation.</li>
+</ol>
+<p>That gives <strong>12 messages × 3 passes × 2 backends = 72 measured requests</strong>, plus one untimed warm up per backend. Repeated passes provide more timing samples; accuracy still describes only 12 distinct examples.</p>
+<p>We accept only an exact category name after removing surrounding whitespace. A valid category can still be incorrect: <code>Junk</code>, for example, would be wrong for a recommendation request. Explanations and unknown labels count as invalid outputs.</p>
+<section id="shared-evaluation-behavior" class="level3">
+<h3 class="anchored" data-anchor-id="shared-evaluation-behavior">Shared evaluation behavior</h3>
+<p>Each workflow defines a prediction function that receives prepared token IDs and returns the answer text, generated token count, and stopping reason. Defining the function does not run predictions; the evaluator calls it for each message and records correctness and duration alongside those details.</p>
+<p>Both models use <strong>evaluation mode</strong>, so any layers with different training behavior use their inference behavior. <strong>Synchronization</strong> waits for submitted device work to finish, so timings include completed computation. A fresh generation cache is created for each request, keeping messages independent.</p>
+<p>The supporting cell prepares all input IDs and defines the evaluator. You can run it without studying every check on your first reading.</p>
+<div id="edae8ee0" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;jupyter&quot;,&quot;value&quot;:{&quot;source_hidden&quot;:true}}" data-execution_count="37">
+<details class="code-fold">
+<summary>Show supporting code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> gc</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> display</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>REPEATS <span class="op">=</span> <span class="dv">3</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> score_prediction(raw, expected):</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    prediction <span class="op">=</span> raw.strip()</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> prediction, prediction <span class="kw">in</span> valid_labels, prediction <span class="op">==</span> expected</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>prepared_inputs <span class="op">=</span> []</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> record <span class="kw">in</span> evaluation_records:</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>    ids <span class="op">=</span> tokenizer.apply_chat_template(</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>        record[<span class="st">"messages"</span>], tokenize<span class="op">=</span><span class="va">True</span>, add_generation_prompt<span class="op">=</span><span class="va">True</span>, return_dict<span class="op">=</span><span class="va">False</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>    prepared_inputs.append(ids)</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> evaluate_backend(name, predict, synchronize):</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    predict(prepared_inputs[<span class="dv">0</span>])  <span class="co"># Warm-up is excluded from measured passes.</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>    rows <span class="op">=</span> []</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> trial <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">1</span>, REPEATS <span class="op">+</span> <span class="dv">1</span>):</span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> example_id, (record, ids) <span class="kw">in</span> <span class="bu">enumerate</span>(<span class="bu">zip</span>(evaluation_records, prepared_inputs)):</span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>            synchronize()</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>            start <span class="op">=</span> perf_counter()</span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>            raw, token_count, finish_reason <span class="op">=</span> predict(ids)</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>            synchronize()</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>            elapsed <span class="op">=</span> perf_counter() <span class="op">-</span> start</span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>            prediction, valid, correct <span class="op">=</span> score_prediction(raw, record[<span class="st">"label"</span>])</span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a>            rows.append({</span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a>                <span class="st">"backend"</span>: name, <span class="st">"trial"</span>: trial, <span class="st">"example_id"</span>: example_id,</span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a>                <span class="st">"expected"</span>: record[<span class="st">"label"</span>], <span class="st">"raw_prediction"</span>: raw,</span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a>                <span class="st">"prediction"</span>: prediction, <span class="st">"valid"</span>: valid, <span class="st">"correct"</span>: correct,</span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a>                <span class="st">"input_tokens"</span>: <span class="bu">len</span>(ids), <span class="st">"generated_tokens"</span>: token_count,</span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a>                <span class="st">"finish_reason"</span>: finish_reason, <span class="st">"latency_s"</span>: elapsed,</span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a>            })</span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>name<span class="sc">}</span><span class="ss">: completed pass </span><span class="sc">{</span>trial<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span>REPEATS<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> rows</span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Prepared </span><span class="sc">{</span><span class="bu">len</span>(prepared_inputs)<span class="sc">}</span><span class="ss"> evaluation inputs."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Prepared 12 evaluation inputs.</code></pre>
+</div>
+</div>
+</section>
+<section id="run-the-mlx-lm-evaluation" class="level3">
+<h3 class="anchored" data-anchor-id="run-the-mlx-lm-evaluation">Run the MLX-LM evaluation</h3>
+<p><strong>What:</strong> Run the evaluation with MLX-LM and store the results in <code>mlx_rows</code>.</p>
+<p><strong>Why:</strong> Establish the first set of predictions and timings for the comparison.</p>
+<p><strong>How:</strong></p>
+<ol type="1">
+<li><strong>Load and prepare.</strong> Load the local model and tokenizer, measure loading time with synchronization, and select evaluation mode.</li>
+<li><strong>Share the stopping rules.</strong> Models normally provide default end-of-answer token IDs. Here we explicitly pass MLX-LM’s IDs to PyTorch so differences in stopping rules do not affect the comparison.</li>
+<li><strong>Define one prediction.</strong> <code>predict_mlx(ids)</code> uses <code>stream_generate()</code> to produce text incrementally and collects the pieces into one answer. The sampler chooses each next token; <code>temp=0.0</code> selects the greedy decoding introduced in Step 3.</li>
+<li><strong>Evaluate and release.</strong> Pass the function to the shared evaluator, then delete the model and tokenizer and clear unused memory before loading PyTorch.</li>
+</ol>
+<pre class="text"><code>Prepared token IDs → predict_mlx() → Answer, token count, stopping reason
+                         ↓
+                 Shared evaluator → mlx_rows</code></pre>
+<div id="86671931" class="cell" data-execution_count="38">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> mlx.core <span class="im">as</span> mx</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> mlx_lm <span class="im">import</span> load, stream_generate</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> mlx_lm.sample_utils <span class="im">import</span> make_sampler</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>mx.synchronize()</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>load_start <span class="op">=</span> perf_counter()</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>mlx_model, mlx_tokenizer <span class="op">=</span> load(model_path)</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>mx.synchronize()</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>mlx_load_seconds <span class="op">=</span> perf_counter() <span class="op">-</span> load_start</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>mlx_model.<span class="bu">eval</span>()</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>STOP_TOKEN_IDS <span class="op">=</span> <span class="bu">sorted</span>(mlx_tokenizer.eos_token_ids)</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"MLX-LM:"</span>, version(<span class="st">"mlx-lm"</span>), <span class="st">"MLX:"</span>, version(<span class="st">"mlx"</span>))</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Local model loading: </span><span class="sc">{</span>mlx_load_seconds<span class="sc">:.3f}</span><span class="ss"> seconds"</span>)</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> predict_mlx(ids):</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>    pieces <span class="op">=</span> []</span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> response <span class="kw">in</span> stream_generate(</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>        mlx_model, mlx_tokenizer, prompt<span class="op">=</span>ids,</span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>        max_tokens<span class="op">=</span>MAX_NEW_TOKENS, sampler<span class="op">=</span>make_sampler(temp<span class="op">=</span><span class="fl">0.0</span>),</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>    ):</span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>        pieces.append(response.text)</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="st">""</span>.join(pieces), response.generation_tokens, response.finish_reason</span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>mlx_rows <span class="op">=</span> evaluate_backend(<span class="st">"MLX-LM"</span>, predict_mlx, mx.synchronize)</span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Release weights before loading the second backend.</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>mx.synchronize()</span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a><span class="kw">del</span> mlx_model, mlx_tokenizer</span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>gc.collect()</span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>mx.clear_cache()</span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"MLX model released."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>MLX-LM: 0.32.2 MLX: 0.32.4
+Local model loading: 0.366 seconds
+MLX-LM: completed pass 1/3
+MLX-LM: completed pass 2/3
+MLX-LM: completed pass 3/3
+MLX model released.</code></pre>
+</div>
+</div>
+</section>
+<section id="run-the-pytorch-mps-evaluation" class="level3">
+<h3 class="anchored" data-anchor-id="run-the-pytorch-mps-evaluation">Run the PyTorch MPS evaluation</h3>
+<p><strong>What:</strong> Repeat the evaluation using Transformers and PyTorch on the Mac GPU. Store the results in <code>torch_rows</code>.</p>
+<p><strong>Why:</strong> Compare this workflow with MLX-LM and establish the PyTorch baseline for fine tuning.</p>
+<p><strong>How:</strong></p>
+<ol type="1">
+<li><strong>Check and load.</strong> Confirm that MPS is available and operations will not automatically fall back to the CPU. Load the local model onto the GPU in bfloat16, measure loading time, and select evaluation mode.</li>
+<li><strong>Set the generation rules.</strong> Configure greedy decoding, the shared output-token limit, and MLX-LM’s end-of-answer token IDs.</li>
+<li><strong>Define one prediction.</strong> <code>predict_torch(ids)</code> generates an answer without tracking the information needed for training. For this model, <code>generate()</code> returns the input followed by the answer, so the function keeps only the new tokens and converts them into text.</li>
+<li><strong>Evaluate and release.</strong> Pass the function to the shared evaluator, then delete the model and clear unused GPU memory.</li>
+</ol>
+<pre class="text"><code>Prepared token IDs → predict_torch() → Answer, token count, stopping reason
+                         ↓
+                 Shared evaluator → torch_rows</code></pre>
+<p><strong>From input IDs to answer text:</strong> for this decoder-only model, <code>generate()</code> returns the original input IDs followed by the newly generated IDs. Using invented IDs:</p>
+<pre class="text"><code>Input ids:       [10, 20, 30]
+Full output:    [[10, 20, 30, 501, 502, 99]]
+Answer IDs:                 [501, 502, 99]
+Decoded answer: "Customer_Support"</code></pre>
+<p>The outer brackets in <code>output</code> represent a batch containing one sequence. <code>output[0, len(ids):]</code> selects that sequence and skips its three input positions; <code>tokenizer.decode(..., skip_special_tokens=True)</code> converts the remaining IDs to text while omitting special markers such as the stopping token (illustrated by <code>99</code>). The boundary comes from the input length, not the token values.</p>
+<div id="e61b8f81" class="cell" data-execution_count="39">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> torch</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> transformers <span class="im">import</span> AutoModelForCausalLM, GenerationConfig</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> torch.backends.mps.is_available():</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">RuntimeError</span>(<span class="st">"MPS is unavailable. Use an Apple Silicon Mac with an MPS capable PyTorch installation."</span>)</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> os.environ.get(<span class="st">"PYTORCH_ENABLE_MPS_FALLBACK"</span>) <span class="op">==</span> <span class="st">"1"</span>:</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">RuntimeError</span>(<span class="st">"Restart the kernel without MPS CPU fallback for this comparison."</span>)</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>torch.mps.synchronize()</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>load_start <span class="op">=</span> perf_counter()</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>torch_model <span class="op">=</span> AutoModelForCausalLM.from_pretrained(</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>    model_path, dtype<span class="op">=</span>torch.bfloat16, local_files_only<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>    attn_implementation<span class="op">=</span><span class="st">"sdpa"</span>,</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>).to(<span class="st">"mps"</span>)</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>torch_model.<span class="bu">eval</span>()</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>torch.mps.synchronize()</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>torch_load_seconds <span class="op">=</span> perf_counter() <span class="op">-</span> load_start</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>torch_weight_types <span class="op">=</span> <span class="bu">sorted</span>({<span class="bu">str</span>(p.dtype) <span class="cf">for</span> p <span class="kw">in</span> torch_model.parameters()})</span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>generation_config <span class="op">=</span> GenerationConfig(</span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>    do_sample<span class="op">=</span><span class="va">False</span>, num_beams<span class="op">=</span><span class="dv">1</span>, max_new_tokens<span class="op">=</span>MAX_NEW_TOKENS,</span>
+<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a>    eos_token_id<span class="op">=</span>STOP_TOKEN_IDS, pad_token_id<span class="op">=</span>tokenizer.pad_token_id,</span>
+<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>    bos_token_id<span class="op">=</span>tokenizer.bos_token_id, use_cache<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb19-25"><a href="#cb19-25" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-27"><a href="#cb19-27" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> predict_torch(ids):</span>
+<span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a>    inputs <span class="op">=</span> torch.tensor([ids], dtype<span class="op">=</span>torch.<span class="bu">long</span>, device<span class="op">=</span><span class="st">"mps"</span>)</span>
+<span id="cb19-29"><a href="#cb19-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> torch.inference_mode():</span>
+<span id="cb19-30"><a href="#cb19-30" aria-hidden="true" tabindex="-1"></a>        output <span class="op">=</span> torch_model.generate(</span>
+<span id="cb19-31"><a href="#cb19-31" aria-hidden="true" tabindex="-1"></a>            input_ids<span class="op">=</span>inputs, attention_mask<span class="op">=</span>torch.ones_like(inputs),</span>
+<span id="cb19-32"><a href="#cb19-32" aria-hidden="true" tabindex="-1"></a>            generation_config<span class="op">=</span>generation_config,</span>
+<span id="cb19-33"><a href="#cb19-33" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb19-34"><a href="#cb19-34" aria-hidden="true" tabindex="-1"></a>    generated_ids <span class="op">=</span> output[<span class="dv">0</span>, <span class="bu">len</span>(ids):].tolist()</span>
+<span id="cb19-35"><a href="#cb19-35" aria-hidden="true" tabindex="-1"></a>    raw <span class="op">=</span> tokenizer.decode(generated_ids, skip_special_tokens<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb19-36"><a href="#cb19-36" aria-hidden="true" tabindex="-1"></a>    stopped <span class="op">=</span> <span class="bu">bool</span>(generated_ids) <span class="kw">and</span> generated_ids[<span class="op">-</span><span class="dv">1</span>] <span class="kw">in</span> STOP_TOKEN_IDS</span>
+<span id="cb19-37"><a href="#cb19-37" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> raw, <span class="bu">len</span>(generated_ids), <span class="st">"stop"</span> <span class="cf">if</span> stopped <span class="cf">else</span> <span class="st">"length"</span></span>
+<span id="cb19-38"><a href="#cb19-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-39"><a href="#cb19-39" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"PyTorch:"</span>, version(<span class="st">"torch"</span>), <span class="st">"Transformers:"</span>, version(<span class="st">"transformers"</span>))</span>
+<span id="cb19-40"><a href="#cb19-40" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Device:"</span>, <span class="bu">next</span>(torch_model.parameters()).device)</span>
+<span id="cb19-41"><a href="#cb19-41" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Weight types:"</span>, torch_weight_types)</span>
+<span id="cb19-42"><a href="#cb19-42" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Local model loading: </span><span class="sc">{</span>torch_load_seconds<span class="sc">:.3f}</span><span class="ss"> seconds"</span>)</span>
+<span id="cb19-43"><a href="#cb19-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-44"><a href="#cb19-44" aria-hidden="true" tabindex="-1"></a>torch_rows <span class="op">=</span> evaluate_backend(<span class="st">"PyTorch MPS"</span>, predict_torch, torch.mps.synchronize)</span>
+<span id="cb19-45"><a href="#cb19-45" aria-hidden="true" tabindex="-1"></a>torch.mps.synchronize()</span>
+<span id="cb19-46"><a href="#cb19-46" aria-hidden="true" tabindex="-1"></a><span class="kw">del</span> torch_model</span>
+<span id="cb19-47"><a href="#cb19-47" aria-hidden="true" tabindex="-1"></a>gc.collect()</span>
+<span id="cb19-48"><a href="#cb19-48" aria-hidden="true" tabindex="-1"></a>torch.mps.empty_cache()</span>
+<span id="cb19-49"><a href="#cb19-49" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"PyTorch model released."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading weights: 100%|██████████| 290/290 [00:00&lt;00:00, 27212.59it/s]</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>PyTorch: 2.14.1 Transformers: 5.22.1
+Device: mps:0
+Weight types: ['torch.bfloat16']
+Local model loading: 0.254 seconds
+PyTorch MPS: completed pass 1/3
+PyTorch MPS: completed pass 2/3
+PyTorch MPS: completed pass 3/3
+PyTorch model released.</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="step-5-read-the-comparison" class="level2">
+<h2 class="anchored" data-anchor-id="step-5-read-the-comparison">Step 5: Read the comparison</h2>
+<p>The summary table reports accuracy from the first measured pass and latency across all three passes, in milliseconds. Model loading times were printed in the evaluation cells and are recorded separately in <code>summary</code>. The agreement result compares the two workflows’ predictions from the first pass.</p>
+<p>The error table shows incorrectly classified messages alongside their expected labels and raw predictions. Use it to identify which categories need improvement.</p>
+<div id="c2e52912" class="cell" data-quarto-private-1="{&quot;key&quot;:&quot;jupyter&quot;,&quot;value&quot;:{&quot;source_hidden&quot;:true}}" data-execution_count="40">
+<details class="code-fold">
+<summary>Show supporting code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> pd.DataFrame(mlx_rows <span class="op">+</span> torch_rows)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>first_pass <span class="op">=</span> results[results[<span class="st">"trial"</span>] <span class="op">==</span> <span class="dv">1</span>]</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>load_seconds <span class="op">=</span> {<span class="st">"MLX-LM"</span>: mlx_load_seconds, <span class="st">"PyTorch MPS"</span>: torch_load_seconds}</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>summary_rows <span class="op">=</span> []</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> backend, group <span class="kw">in</span> results.groupby(<span class="st">"backend"</span>, sort<span class="op">=</span><span class="va">False</span>):</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    first <span class="op">=</span> group[group[<span class="st">"trial"</span>] <span class="op">==</span> <span class="dv">1</span>]</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    pass_medians <span class="op">=</span> group.groupby(<span class="st">"trial"</span>)[<span class="st">"latency_s"</span>].median()</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>    changed <span class="op">=</span> <span class="bu">int</span>((group.groupby(<span class="st">"example_id"</span>)[<span class="st">"raw_prediction"</span>].nunique() <span class="op">&gt;</span> <span class="dv">1</span>).<span class="bu">sum</span>())</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    summary_rows.append({</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"backend"</span>: backend, <span class="st">"correct"</span>: <span class="bu">int</span>(first[<span class="st">"correct"</span>].<span class="bu">sum</span>()), <span class="st">"examples"</span>: <span class="bu">len</span>(first),</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"accuracy_pct"</span>: <span class="dv">100</span> <span class="op">*</span> first[<span class="st">"correct"</span>].mean(),</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"invalid_outputs"</span>: <span class="bu">int</span>((<span class="op">~</span>first[<span class="st">"valid"</span>]).<span class="bu">sum</span>()),</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"local_load_s"</span>: load_seconds[backend],</span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>        <span class="st">"median_latency_s"</span>: group[<span class="st">"latency_s"</span>].median(),</span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>        <span class="st">"p90_latency_s"</span>: group[<span class="st">"latency_s"</span>].quantile(<span class="fl">0.9</span>),</span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>        <span class="st">"pass_median_min_s"</span>: pass_medians.<span class="bu">min</span>(), <span class="st">"pass_median_max_s"</span>: pass_medians.<span class="bu">max</span>(),</span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>        <span class="st">"median_generated_tokens"</span>: group[<span class="st">"generated_tokens"</span>].median(),</span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>        <span class="st">"outputs_changed_across_passes"</span>: changed,</span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> pd.DataFrame(summary_rows)</span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a>comparison <span class="op">=</span> first_pass.pivot(index<span class="op">=</span><span class="st">"example_id"</span>, columns<span class="op">=</span><span class="st">"backend"</span>, values<span class="op">=</span><span class="st">"prediction"</span>)</span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a>comparison.insert(<span class="dv">0</span>, <span class="st">"expected"</span>, [r[<span class="st">"label"</span>] <span class="cf">for</span> r <span class="kw">in</span> evaluation_records])</span>
+<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a>comparison[<span class="st">"agree"</span>] <span class="op">=</span> comparison[<span class="st">"MLX-LM"</span>] <span class="op">==</span> comparison[<span class="st">"PyTorch MPS"</span>]</span>
+<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a>agreement <span class="op">=</span> <span class="bu">float</span>(comparison[<span class="st">"agree"</span>].mean())</span>
+<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a>errors <span class="op">=</span> first_pass[<span class="op">~</span>first_pass[<span class="st">"correct"</span>]].copy()</span>
+<span id="cb22-27"><a href="#cb22-27" aria-hidden="true" tabindex="-1"></a>errors[<span class="st">"message"</span>] <span class="op">=</span> [evaluation_records[i][<span class="st">"messages"</span>][<span class="dv">1</span>][<span class="st">"content"</span>] <span class="cf">for</span> i <span class="kw">in</span> errors[<span class="st">"example_id"</span>]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div id="83075b87" class="cell" data-execution_count="41">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>overview <span class="op">=</span> summary[</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    [<span class="st">"backend"</span>, <span class="st">"correct"</span>, <span class="st">"examples"</span>, <span class="st">"accuracy_pct"</span>]</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>].copy()</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>overview[<span class="st">"median_latency_ms"</span>] <span class="op">=</span> summary[<span class="st">"median_latency_s"</span>] <span class="op">*</span> <span class="dv">1000</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>display(overview.<span class="bu">round</span>(<span class="dv">2</span>))</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Both backends agreed on </span><span class="sc">{</span>agreement<span class="sc">:.0%}</span><span class="ss"> of messages."</span>)</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">Incorrect predictions:"</span>)</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> pd.option_context(<span class="st">"display.max_colwidth"</span>, <span class="va">None</span>):</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>    display(errors[[<span class="st">"backend"</span>, <span class="st">"message"</span>, <span class="st">"expected"</span>, <span class="st">"raw_prediction"</span>]])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">backend</th>
+<th data-quarto-table-cell-role="th">correct</th>
+<th data-quarto-table-cell-role="th">examples</th>
+<th data-quarto-table-cell-role="th">accuracy_pct</th>
+<th data-quarto-table-cell-role="th">median_latency_ms</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">0</th>
+<td>MLX-LM</td>
+<td>4</td>
+<td>12</td>
+<td>33.33</td>
+<td>32.09</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">1</th>
+<td>PyTorch MPS</td>
+<td>4</td>
+<td>12</td>
+<td>33.33</td>
+<td>36.94</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Both backends agreed on 100% of messages.
+
+Incorrect predictions:</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">backend</th>
+<th data-quarto-table-cell-role="th">message</th>
+<th data-quarto-table-cell-role="th">expected</th>
+<th data-quarto-table-cell-role="th">raw_prediction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">1</th>
+<td>MLX-LM</td>
+<td>Classify: Can our festival partner with your recommendation platform?</td>
+<td>Partnership</td>
+<td>Human_Review</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">2</th>
+<td>MLX-LM</td>
+<td>Classify: You have been selected for an exclusive cash bonus.</td>
+<td>Junk</td>
+<td>Human_Review</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">3</th>
+<td>MLX-LM</td>
+<td>Classify: My subscription payment was charged twice.</td>
+<td>Customer_Support</td>
+<td>Human_Review</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">4</th>
+<td>MLX-LM</td>
+<td>Classify: I cannot remove a track from my library.</td>
+<td>Customer_Support</td>
+<td>Human_Review</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">5</th>
+<td>MLX-LM</td>
+<td>Classify: Congratulations you won a prize click here now.</td>
+<td>Junk</td>
+<td>Human_Review</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">6</th>
+<td>MLX-LM</td>
+<td>Classify: Why did you recommend this song to me?</td>
+<td>Explanation_Request</td>
+<td>Human_Review</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">8</th>
+<td>MLX-LM</td>
+<td>Classify: We would like to integrate your service into our music app.</td>
+<td>Partnership</td>
+<td>Human_Review</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">10</th>
+<td>MLX-LM</td>
+<td>Classify: Help me understand this recommendation.</td>
+<td>Explanation_Request</td>
+<td>Human_Review</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">37</th>
+<td>PyTorch MPS</td>
+<td>Classify: Can our festival partner with your recommendation platform?</td>
+<td>Partnership</td>
+<td>Human_Review</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">38</th>
+<td>PyTorch MPS</td>
+<td>Classify: You have been selected for an exclusive cash bonus.</td>
+<td>Junk</td>
+<td>Human_Review</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">39</th>
+<td>PyTorch MPS</td>
+<td>Classify: My subscription payment was charged twice.</td>
+<td>Customer_Support</td>
+<td>Human_Review</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">40</th>
+<td>PyTorch MPS</td>
+<td>Classify: I cannot remove a track from my library.</td>
+<td>Customer_Support</td>
+<td>Human_Review</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">41</th>
+<td>PyTorch MPS</td>
+<td>Classify: Congratulations you won a prize click here now.</td>
+<td>Junk</td>
+<td>Human_Review</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">42</th>
+<td>PyTorch MPS</td>
+<td>Classify: Why did you recommend this song to me?</td>
+<td>Explanation_Request</td>
+<td>Human_Review</td>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">44</th>
+<td>PyTorch MPS</td>
+<td>Classify: We would like to integrate your service into our music app.</td>
+<td>Partnership</td>
+<td>Human_Review</td>
+</tr>
+<tr class="even">
+<th data-quarto-table-cell-role="th">46</th>
+<td>PyTorch MPS</td>
+<td>Classify: Help me understand this recommendation.</td>
+<td>Explanation_Request</td>
+<td>Human_Review</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="what-we-learned-and-what-comes-next" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-learned-and-what-comes-next">What we learned and what comes next</h2>
+<p>Read accuracy and agreement together. If both workflows produce the same incorrect answer, the immediate question is how the model and prompt handle the task, rather than which runtime is correct. Inspect which categories are being confused before deciding what might help.</p>
+<p>Our dataset has only two examples per category, so one mistake changes accuracy by about 8.3 percentage points. It supports learning and error analysis, but cannot establish production reliability.</p>
+<p>The timings describe this Mac and these short requests. They include input conversion, generation, decoding, and completion of GPU work, but exclude downloads and tokenization. We ran MLX first and PyTorch second, so caching and background activity may affect the results. These measurements do not establish which workflow is faster across other workloads.</p>
+<section id="why-fine-tuning-is-the-next-step" class="level3">
+<h3 class="anchored" data-anchor-id="why-fine-tuning-is-the-next-step">Why fine tuning is the next step</h3>
+<p>In the saved run, the baseline falls short of the classification quality we want: both workflows correctly classified only <strong>4 of 12 messages</strong>, and both routed most messages to <code>Human_Review</code>. The eight mistakes all come from partnership, junk, customer support, and explanation requests being routed to <code>Human_Review</code>. Agreement shows that both workflows made the same choices on this small set; it does not establish general equivalence between the frameworks.</p>
+<p>Our next step is therefore to <strong>test fine tuning with PyTorch MPS</strong>. We will give the model labelled training examples to help it learn the distinctions between our six categories, choose training settings using validation data, and evaluate it through the same PyTorch inference path on the unchanged test set.</p>
+<p>Fine tuning is an experiment rather than a guaranteed solution. Clearer instructions or better examples may also help, and the small test set limits what we can conclude. The comparison results give us a concrete question for notebook 06: <strong>does additional training reduce these classification errors?</strong> Use the training and validation splits to choose improvements, and keep these test messages fixed for the final comparison. Training memory requirements and settings will be checked as part of that lesson.</p>
+<p>Three ideas to retain:</p>
+<ol type="1">
+<li>Tokenization prepares input, and the inference backend computes predictions.</li>
+<li>Accuracy measures correctness, while agreement compares the two workflows.</li>
+<li>A baseline records the starting point for measuring improvement.</li>
+</ol>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/lakpa\.github\.io\/ai-engineering-lab\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+          if (!link.classList.contains('no-external-icon')) {
+          }
+        }
+      }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
+          if (lineIds.length > 0) {
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            placeBand(gutterDiv, el, lastEl);
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
