@@ -7,6 +7,7 @@ project:
     - embeddings-and-search/02-content-based-recommender.ipynb
     - embeddings-and-search/03-grounded-recommendation-explanations.ipynb
     - embeddings-and-search/04-prepare-message-classification-dataset.ipynb
+    - embeddings-and-search/05-message-classification-inference.ipynb
   resources:
     - embeddings-and-search/songs.csv
     - embeddings-and-search/public-domain-songs.csv
@@ -27,6 +28,8 @@ website:
         text: Understanding RAG
       - href: embeddings-and-search/04-prepare-message-classification-dataset.ipynb
         text: Preparing Classification Data
+      - href: embeddings-and-search/05-message-classification-inference.ipynb
+        text: Local Message Classification
     right:
       - icon: github
         href: https://github.com/lakpa/ai-engineering-lab
